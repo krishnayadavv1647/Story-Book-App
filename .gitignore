@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+.npm/
+
+# environment — NEVER commit real secrets
+.env
+.env.*
+!.env.example
+
+# local object storage (development fallback when no bucket is configured)
+server/.storage/
+
+# build output
+client/dist/
+server/dist/
+build/
+
+# test + coverage
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# local artifacts
+tmp/
+*.local
+storage/
+uploads/
+
+# logs
+logs/
+*.log
+npm-debug.log*
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

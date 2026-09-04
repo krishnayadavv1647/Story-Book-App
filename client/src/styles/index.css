@@ -1,0 +1,365 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * StoryBook Studio design tokens — dark cinematic theme.
+ *
+ * PROVENANCE. The palette below is the one supplied with the approved dark
+ * dashboard reference (2026-09-02) and is authoritative for colour. The earlier
+ * light palette measured from Figma `H98QB4Tdo6iH2EaXCerUlv` frame 1:2 and
+ * `eQzIIC5gfOmGE392HvA7aC` frame 1:2 is superseded for colour only — every
+ * measured dimension (type scale, radii, control heights, sidebar width,
+ * content inset) still comes from those frames and is unchanged.
+ *
+ * Two deliberate departures from the reference image, both directed in writing
+ * by the owner and recorded in references/design-source-map.md:
+ *   · the image tints the selected sidebar row teal; the brief requires the gold
+ *     CTA gradient there instead, so gold is what is implemented;
+ *   · the image tints the active tab underline teal; the brief requires gold.
+ *
+ * Do not change a value here without updating tests/contract/design-tokens.test.js
+ * and references/design-source-map.md.
+ */
+@layer base {
+  :root {
+    /* --- ground --------------------------------------------------------- */
+    --background: #02090d; /* app background behind the shell */
+    --background-deep: #010609; /* deepest well — page gutters, scrim base */
+    --background-gradient:
+      radial-gradient(circle at 18% 10%, rgba(0, 94, 94, 0.12), transparent 32%),
+      linear-gradient(135deg, #02090d 0%, #031015 48%, #010609 100%);
+    --sidebar-background: linear-gradient(180deg, #031116 0%, #020a0e 55%, #010609 100%);
+
+    /* --- surfaces ------------------------------------------------------- */
+    --surface-primary: #071216; /* cards, inputs, panels */
+    --surface-secondary: #09171b; /* chips, tags, nested wells */
+    --surface-elevated: #0c1d21; /* count pills, raised rows, avatars */
+    --surface-hover: #10262a; /* hover ground for any dark control */
+    --surface-overlay: rgba(4, 13, 17, 0.94); /* dialogs, menus, popovers */
+
+    /* --- borders -------------------------------------------------------- */
+    /* Deliberately faint, and drawn sub-pixel (see `borderWidth` in
+       tailwind.config.js). A 1px hairline on a near-black ground reads as a
+       bright white outline around every card even when its colour is a dark
+       teal, because the eye reads any lighter line on black as white. Cards
+       carry their own gradient and shadow, so a border is here to suggest an
+       edge, not to draw one.
+
+       `--border-strong` is no longer strong. Selection now reads from the
+       `--teal-soft` tint behind the row, and keyboard focus from the separate
+       2px `:focus-visible` outline below — so nothing depends on this border
+       alone being seen. */
+    --border-default: rgba(7, 48, 47, 0.63); /* every card, input, divider */
+    --border-strong: rgba(2, 36, 34, 0.26); /* selected, hovered, focused */
+    --border-muted: rgba(12, 60, 61, 0.07); /* quiet rules inside a panel */
+
+    /* --- text ----------------------------------------------------------- */
+    --text-primary: #f7f8f8;
+    --text-secondary: #a9b4b5;
+    --text-muted: #6f7e80;
+    --text-on-gold: #221600; /* the only ink that sits on a gold fill */
+
+    /* --- gold: primary action, and nothing else ------------------------- */
+    --gold-start: #f6c744;
+    --gold-middle: #dba51c;
+    --gold-end: #b87905;
+    --gold-border: #f3c13d;
+    --gold-hover-start: #ffd868;
+    --gold-hover-end: #c98a09;
+    --gold-shadow: rgba(222, 164, 25, 0.28);
+    /* Flat gold for an icon, a rule or a dot, where a gradient makes no sense. */
+    --gold-flat: #e8b52e;
+    --gold-focus: rgba(246, 199, 68, 0.25);
+
+    /* --- teal: selection, focus and supporting state -------------------- */
+    --teal-primary: #159b98;
+    --teal-bright: #1bc1b9;
+    --teal-muted: #0d5d5c;
+    --teal-focus: rgba(27, 193, 185, 0.28);
+    /* Tint behind a selected row or an informational banner. Its own token
+       because an opacity modifier on a token colour compiles to nothing. */
+    --teal-soft: rgba(20, 132, 130, 0.16);
+
+    /* --- semantic status ------------------------------------------------ */
+    --success: #39b980;
+    --warning: #e3ad32;
+    --danger: #e26464;
+    --info: #4b9fda;
+    /* Tinted grounds for status banners, again as real tokens. */
+    --success-soft: rgba(57, 185, 128, 0.14);
+    --warning-soft: rgba(227, 173, 50, 0.14);
+    --danger-soft: rgba(226, 100, 100, 0.14);
+
+    /* --- system extensions ---------------------------------------------- */
+    /* Tokens carry hex or rgba values, not bare RGB channels, so a Tailwind
+       opacity modifier (`bg-ink/30`) compiles to nothing at all. Any translucent
+       colour therefore needs its own token — never `token/opacity`.
+       Guarded by tests/contract/design-tokens.test.js. */
+    --scrim: rgba(1, 6, 9, 0.72); /* dialog backdrop */
+    --skeleton: #0b1a1f; /* loading placeholder block */
+
+    /* --- paper -----------------------------------------------------------
+       The white caption band under a book cover. A book card is a physical
+       object in this product — cover plus printed label — so the label is the
+       one light surface in a dark app. It is a real surface, not a one-off
+       `bg-white`, which is why it carries its own ink and rule: anything placed
+       on it has to be legible against white, and `--text-secondary` is only
+       about 2:1 there. */
+    --paper: #ffffff;
+    --paper-ink: #121214;
+    --paper-ink-muted: #5c6063; /* ~6.4:1 on white */
+    --paper-line: rgba(18, 18, 20, 0.12);
+    --paper-hover: #f1f3f4;
+
+    /* Cover placeholders. These stand in until real art exists, so they are
+       chrome rather than content and belong in the token layer. */
+    --cover-placeholder: #0c1d21;
+    --cover-glyph: #e8b52e;
+
+    /* --- the printed page ------------------------------------------------
+       Measured from the reference book the owner supplied ("The Key in the
+       Pocket", 10 landscape spreads). These are the values off that file, not a
+       guess at them:
+
+         paper       #F5F5F5   sampled from the text leaf
+         ink         #000000   the body serif
+         running head #6E7176  the author line, small caps, top outer corner
+         folio       #C8C8C9   the page number, bottom outer corner
+
+       Geometry, as a fraction of one leaf's width — so a page keeps its
+       proportions at any size, which is the whole reason `PageSheet` lays a page
+       out at a fixed paper size and scales it:
+
+         body size   4.3%      (~30px on the reference's 700px leaf)
+         leading     1.55
+         side margins 20% each, so the measure is ~60% of the leaf
+         the block is centred vertically
+
+       The facing illustration is full bleed — no margin at all. That is what
+       fixes the "khaali jagah" the owner reported: the old page put a picture in
+       the top half and floated the text in the middle of the bottom half, so a
+       short paragraph left a third of the page empty. Here the picture has a
+       whole leaf and the text has a whole leaf. */
+    /* The book's own face. Inter is the application; a printed page is set in a
+       book face, and this is the one the reference book uses. */
+    --font-book: 'EB Garamond', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+    --paper-page: #f5f5f5;
+    --page-ink: #000000;
+    --page-head: #6e7176;
+    --page-folio: #c8c8c9;
+
+    /* --- book card -------------------------------------------------------
+       Measured from Figma `hY9EcRsQJIcA35YpTPfxeE` frame 1:3 ("Realistic Book
+       Cards"), which draws a book as four stacked layers rather than a flat
+       rectangle: the back cover peeking out, the block of pages along the fore
+       edge, the cover artwork, and a rounded spine. These are the materials the
+       book is made of, so they are tokens like any other surface. */
+    --book-cover-ground: #142e2e; /* cover artwork before its image loads */
+    --book-cover-edge: rgba(255, 255, 255, 0.12); /* light catching the cover's rim */
+    --book-pages: #e5d6b2; /* the fore edge of the paper block */
+    --book-shadow: 8px 12px 8px rgba(0, 0, 0, 0.52);
+
+    /* --- layout (measured; unchanged by the theme) ----------------------- */
+    --sidebar-w: 274px; /* Story Plan frame; Dashboard draws 260px */
+    --content-x: 28px; /* content inset from the sidebar edge */
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply text-ink font-sans antialiased;
+    background-color: var(--background);
+    background-image: var(--background-gradient);
+    background-attachment: fixed;
+    /* The design sets no letter-spacing; Inter's default metrics are correct. */
+    font-size: 13px;
+  }
+
+  /* The system is border-led and low-contrast, so a removed focus ring would
+     make it unusable without a mouse. Teal reads against every dark surface. */
+  :focus-visible {
+    outline: 2px solid var(--teal-bright);
+    outline-offset: 2px;
+  }
+
+  /* Inputs in the design carry no native appearance. */
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  textarea {
+    resize: none;
+  }
+
+  /* A dark app with light scrollbars looks broken; tell the UA the ground is
+     dark and let it draw its own. */
+  :root {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  /**
+   * The one gold gradient. Every genuine primary action wears this and nothing
+   * else wears it — that is what makes gold mean "the main action here".
+   * Used by Button `variant="primary"` and by the selected sidebar row.
+   */
+  .surface-gold {
+    color: var(--text-on-gold);
+    background: linear-gradient(
+      135deg,
+      var(--gold-start) 0%,
+      var(--gold-middle) 52%,
+      var(--gold-end) 100%
+    );
+    border-color: var(--gold-border);
+    box-shadow:
+      0 8px 22px var(--gold-shadow),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.28);
+  }
+
+  .surface-gold:hover:not(:disabled) {
+    background: linear-gradient(
+      135deg,
+      var(--gold-hover-start) 0%,
+      var(--gold-middle) 50%,
+      var(--gold-hover-end) 100%
+    );
+    box-shadow:
+      0 10px 28px rgba(222, 164, 25, 0.38),
+      inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    transform: translateY(-1px);
+  }
+
+  .surface-gold:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .surface-gold:focus-visible {
+    outline: 3px solid var(--gold-focus);
+    outline-offset: 2px;
+  }
+
+  .surface-gold:disabled {
+    opacity: 0.48;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /**
+   * The selected sidebar row. Same gradient, a shallower shadow — it sits on the
+   * sidebar's own dark ground rather than floating above a page.
+   */
+  .surface-gold-nav {
+    color: var(--text-on-gold);
+    background: linear-gradient(
+      135deg,
+      var(--gold-start) 0%,
+      var(--gold-middle) 52%,
+      var(--gold-end) 100%
+    );
+    border-color: var(--gold-border);
+    box-shadow:
+      0 6px 18px rgba(222, 164, 25, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+
+  /** Cards and panels: a barely-there vertical lift, not a neon glow. */
+  .surface-card {
+    background: linear-gradient(145deg, rgba(9, 23, 27, 0.98), rgba(3, 13, 17, 0.98));
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  }
+
+  /** The sidebar's own ground. */
+  .surface-sidebar {
+    background: var(--sidebar-background);
+  }
+
+  /**
+   * The book's materials. Two gradients that cannot be expressed as a single
+   * token each, so they are declared once here and worn by every card — the
+   * same reasoning as `.surface-gold`.
+   */
+  .surface-book-back-edge {
+    background-image: linear-gradient(
+      90deg,
+      rgb(250, 240, 209) 0%,
+      rgb(184, 166, 133) 45%,
+      rgb(245, 232, 199) 72%,
+      rgb(138, 115, 87) 100%
+    );
+  }
+
+  .surface-book-spine {
+    background-image: linear-gradient(
+      90deg,
+      rgba(199, 222, 214, 0.72) 0%,
+      rgba(36, 71, 71, 0.82) 26%,
+      rgba(10, 26, 28, 0.76) 72%,
+      rgba(173, 199, 191, 0.62) 100%
+    );
+  }
+
+  /**
+   * The fore edge of a real book is a stack of leaves you can count, not a flat
+   * cream bar. Each leaf's edge runs the full height of the book, so the lines
+   * are vertical — across the strip's width, which is what the depth of the
+   * stack actually is.
+   *
+   * Each leaf is drawn as a *pair* of stops, not one line: a shadow in the gap
+   * between leaves and a lit face just beside it. A single dark hairline all but
+   * disappears at the size this strip is actually drawn — about 17px on a
+   * 240px card — because at that width a 0.5px line is antialiased to a tint.
+   * The pair survives it, because the eye reads the light/dark step rather than
+   * the line.
+   *
+   * Two intervals that do not divide into each other (2.2px and 5.1px) so the
+   * leaves never fall into a rhythm the eye reads as a pattern. Under them, a
+   * shading gradient: dark where the stack meets the cover, bright just outside
+   * it where light catches the paper, rolling off to shadow at the outer edge.
+   *
+   * Hard stops throughout — a stop fading to `transparent` would interpolate
+   * through transparent black and grey the paper.
+   */
+  .surface-book-pages {
+    background-color: var(--book-pages);
+    background-image:
+      repeating-linear-gradient(
+        90deg,
+        rgba(116, 92, 57, 0.62) 0 0.6px,
+        rgba(255, 251, 237, 0.7) 0.6px 1.3px,
+        rgba(116, 92, 57, 0) 1.3px 2.2px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        rgba(104, 81, 48, 0.45) 0 0.7px,
+        rgba(104, 81, 48, 0) 0.7px 5.1px
+      ),
+      linear-gradient(
+        90deg,
+        rgba(101, 80, 50, 0.6) 0%,
+        rgba(255, 253, 244, 0.34) 20%,
+        rgba(152, 128, 92, 0.16) 62%,
+        rgba(94, 73, 45, 0.62) 100%
+      );
+  }
+
+  .surface-book-cover {
+    background-color: var(--book-cover-ground);
+    border: 1px solid var(--book-cover-edge);
+  }
+
+  /** Primary generation progress. Semantic status bars stay their own colour. */
+  .surface-gold-bar {
+    background: linear-gradient(90deg, var(--gold-end) 0%, var(--gold-middle) 55%, var(--gold-start) 100%);
+  }
+}

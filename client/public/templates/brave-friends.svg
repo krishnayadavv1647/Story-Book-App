@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 316" width="240" height="316" role="img" aria-label="Brave Friends">
+  <defs>
+    <linearGradient id="bfSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd59b"/>
+      <stop offset="0.45" stop-color="#ff9f7e"/>
+      <stop offset="1" stop-color="#e0745f"/>
+    </linearGradient>
+    <radialGradient id="bfSun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff3cf"/>
+      <stop offset="1" stop-color="#ffcf76"/>
+    </radialGradient>
+    <linearGradient id="bfScrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c3b32" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0f241d" stop-opacity="0.92"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="240" height="316" fill="url(#bfSky)"/>
+
+  <!-- sun with rays -->
+  <g opacity="0.9">
+    <circle cx="120" cy="96" r="30" fill="url(#bfSun)"/>
+    <g stroke="#fff0c4" stroke-width="3" stroke-linecap="round" opacity="0.7">
+      <path d="M120 44 v-12"/><path d="M120 160 v12"/>
+      <path d="M68 96 h-12"/><path d="M172 96 h12"/>
+      <path d="M84 60 l-8 -8"/><path d="M156 60 l8 -8"/>
+      <path d="M84 132 l-8 8"/><path d="M156 132 l8 8"/>
+    </g>
+  </g>
+
+  <!-- distant hills -->
+  <path d="M0 176 C 60 150 120 190 240 158 L240 220 L0 220 Z" fill="#4aa07a" opacity="0.7"/>
+
+  <!-- green hill -->
+  <path d="M0 210 C 70 178 170 196 240 184 L240 316 L0 316 Z" fill="#2f8f6b"/>
+  <path d="M0 246 C 80 224 160 244 240 232 L240 316 L0 316 Z" fill="#237457"/>
+
+  <!-- two friends holding hands -->
+  <g fill="#173a2e">
+    <circle cx="98" cy="196" r="11"/>
+    <path d="M88 208 q10 -6 20 0 l4 34 h-28 z"/>
+    <circle cx="140" cy="192" r="11"/>
+    <path d="M130 204 q10 -6 20 0 l4 38 h-28 z"/>
+    <path d="M110 224 q15 -10 22 0" stroke="#173a2e" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- title -->
+  <rect y="196" width="240" height="120" fill="url(#bfScrim)"/>
+  <text x="120" y="238" text-anchor="middle" fill="#8fe3c0" font-family="Georgia, 'Times New Roman', serif" font-size="11" letter-spacing="3">FRIENDSHIP</text>
+  <text x="120" y="272" text-anchor="middle" fill="#fdf6e3" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="30">Brave</text>
+  <text x="120" y="300" text-anchor="middle" fill="#fdf6e3" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="30">Friends</text>
+</svg>

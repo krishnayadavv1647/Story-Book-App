@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 316" width="240" height="316" role="img" aria-label="Paper Hearts">
+  <defs>
+    <linearGradient id="phSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd0c2"/>
+      <stop offset="0.45" stop-color="#f2a0ab"/>
+      <stop offset="1" stop-color="#a85a86"/>
+    </linearGradient>
+    <radialGradient id="phSun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff3e2"/>
+      <stop offset="1" stop-color="#ffd9a0"/>
+    </radialGradient>
+    <linearGradient id="phScrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a2a4a" stop-opacity="0"/>
+      <stop offset="1" stop-color="#3d1a33" stop-opacity="0.92"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="240" height="316" fill="url(#phSky)"/>
+  <circle cx="120" cy="86" r="34" fill="url(#phSun)" opacity="0.85"/>
+
+  <!-- floating hearts -->
+  <g fill="#fff1f4" opacity="0.85">
+    <path d="M46 60 q-7 -8 -14 0 q-7 8 14 20 q21 -12 14 -20 q-7 -8 -14 0 z"/>
+    <path d="M196 74 q-5 -6 -10 0 q-5 6 10 14 q15 -8 10 -14 q-5 -6 -10 0 z"/>
+    <path d="M60 128 q-4 -5 -8 0 q-4 5 8 11 q12 -6 8 -11 q-4 -5 -8 0 z"/>
+  </g>
+
+  <!-- soft hills -->
+  <path d="M0 176 C 70 158 170 178 240 162 L240 210 L0 210 Z" fill="#c76f8e" opacity="0.7"/>
+
+  <!-- envelope with heart seal -->
+  <g transform="translate(120 176)">
+    <rect x="-46" y="-30" width="92" height="60" rx="6" fill="#fff6ee"/>
+    <path d="M-46 -26 L0 8 L46 -26" fill="none" stroke="#e6c3a8" stroke-width="3"/>
+    <path d="M-46 30 L-6 2 M46 30 L6 2" stroke="#e6c3a8" stroke-width="2" opacity="0.7"/>
+    <g transform="translate(0 2)">
+      <path d="M0 6 q-9 -12 -18 -3 q-9 9 18 24 q27 -15 18 -24 q-9 -9 -18 3 z" fill="#e0526f"/>
+    </g>
+  </g>
+
+  <!-- title -->
+  <rect y="196" width="240" height="120" fill="url(#phScrim)"/>
+  <text x="120" y="236" text-anchor="middle" fill="#ffd7e0" font-family="Georgia, 'Times New Roman', serif" font-size="11" letter-spacing="3">ROMANCE</text>
+  <text x="120" y="270" text-anchor="middle" fill="#fff4ee" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-weight="bold" font-size="30">Paper</text>
+  <text x="120" y="300" text-anchor="middle" fill="#fff4ee" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-weight="bold" font-size="30">Hearts</text>
+</svg>

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 316" width="240" height="316" role="img" aria-label="Starbound">
+  <defs>
+    <linearGradient id="sbSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#070b26"/>
+      <stop offset="0.5" stop-color="#141a4d"/>
+      <stop offset="1" stop-color="#2a1550"/>
+    </linearGradient>
+    <radialGradient id="sbPlanet" cx="0.35" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#6fb6ff"/>
+      <stop offset="0.6" stop-color="#3b6fd6"/>
+      <stop offset="1" stop-color="#22357e"/>
+    </radialGradient>
+    <radialGradient id="sbGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#8fd8ff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#8fd8ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sbScrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0f2e" stop-opacity="0"/>
+      <stop offset="1" stop-color="#070a22" stop-opacity="0.94"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="240" height="316" fill="url(#sbSky)"/>
+
+  <!-- nebula glow -->
+  <circle cx="60" cy="120" r="90" fill="url(#sbGlow)"/>
+
+  <!-- stars -->
+  <g fill="#eaf4ff">
+    <circle cx="30" cy="44" r="1.8"/><circle cx="70" cy="30" r="1.3"/>
+    <circle cx="120" cy="52" r="1.6"/><circle cx="196" cy="40" r="1.4"/>
+    <circle cx="40" cy="150" r="1.4"/><circle cx="210" cy="150" r="1.6"/>
+    <circle cx="150" cy="30" r="1.2"/><circle cx="96" cy="120" r="1.3"/>
+  </g>
+
+  <!-- ringed planet -->
+  <g transform="translate(150 92)">
+    <ellipse cx="0" cy="0" rx="52" ry="14" fill="none" stroke="#7fa8e6" stroke-width="4" opacity="0.55"/>
+    <circle cx="0" cy="0" r="36" fill="url(#sbPlanet)"/>
+    <ellipse cx="0" cy="0" rx="52" ry="14" fill="none" stroke="#c9deff" stroke-width="2" opacity="0.9" stroke-dasharray="60 120" stroke-dashoffset="30"/>
+    <circle cx="-12" cy="-10" r="26" fill="#0f1a44" opacity="0.35"/>
+  </g>
+
+  <!-- rocket -->
+  <g transform="translate(66 176) rotate(-28)">
+    <path d="M0 -18 C 8 -14 8 8 0 16 C -8 8 -8 -14 0 -18 Z" fill="#e9eef7"/>
+    <circle cx="0" cy="-4" r="4" fill="#3b6fd6"/>
+    <path d="M-6 8 l-6 10 l6 -2 z" fill="#ff7a59"/>
+    <path d="M6 8 l6 10 l-6 -2 z" fill="#ff7a59"/>
+    <path d="M-2 16 q2 12 2 12 q0 0 2 -12 z" fill="#ffd15e"/>
+  </g>
+
+  <!-- title -->
+  <rect y="196" width="240" height="120" fill="url(#sbScrim)"/>
+  <text x="120" y="238" text-anchor="middle" fill="#8fd8ff" font-family="Georgia, 'Times New Roman', serif" font-size="11" letter-spacing="3">SCIENCE FICTION</text>
+  <text x="120" y="272" text-anchor="middle" fill="#fdf6e3" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="30">Star</text>
+  <text x="120" y="300" text-anchor="middle" fill="#fdf6e3" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="30">bound</text>
+</svg>

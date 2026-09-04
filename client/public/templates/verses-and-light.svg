@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 316" width="240" height="316" role="img" aria-label="Verses and Light">
+  <defs>
+    <linearGradient id="vlSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#12314a"/>
+      <stop offset="0.5" stop-color="#1c4a5e"/>
+      <stop offset="1" stop-color="#0f2338"/>
+    </linearGradient>
+    <radialGradient id="vlMoon" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff7df"/>
+      <stop offset="1" stop-color="#f2dd9a"/>
+    </radialGradient>
+    <linearGradient id="vlScrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f2338" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0a1a2b" stop-opacity="0.93"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="240" height="316" fill="url(#vlSky)"/>
+
+  <!-- moon -->
+  <circle cx="120" cy="78" r="30" fill="url(#vlMoon)" opacity="0.95"/>
+
+  <!-- light rays -->
+  <g stroke="#ffe9a8" stroke-width="1" opacity="0.35">
+    <path d="M120 78 L48 168"/><path d="M120 78 L96 178"/><path d="M120 78 L144 178"/><path d="M120 78 L192 168"/>
+  </g>
+
+  <!-- faint verse lines -->
+  <g stroke="#bfe0e8" stroke-linecap="round" opacity="0.4">
+    <path d="M60 128 h60" stroke-width="2"/>
+    <path d="M70 138 h44" stroke-width="2"/>
+    <path d="M132 132 h48" stroke-width="2"/>
+    <path d="M138 142 h30" stroke-width="2"/>
+  </g>
+
+  <!-- drifting stars -->
+  <g fill="#eaf6f2">
+    <circle cx="44" cy="56" r="1.6"/><circle cx="198" cy="60" r="1.4"/>
+    <circle cx="40" cy="120" r="1.3"/><circle cx="204" cy="120" r="1.3"/>
+  </g>
+
+  <!-- a single quill feather -->
+  <g transform="translate(120 176) rotate(18)">
+    <path d="M0 -26 C 14 -14 14 12 0 26 C -6 12 -6 -14 0 -26 Z" fill="#dff0ea" opacity="0.9"/>
+    <path d="M0 -22 L0 30" stroke="#8fb7ad" stroke-width="1.5"/>
+    <g stroke="#a7cfc6" stroke-width="1" opacity="0.8">
+      <path d="M0 -12 L9 -16"/><path d="M0 -2 L11 -6"/><path d="M0 8 L10 4"/>
+      <path d="M0 -12 L-9 -16"/><path d="M0 -2 L-11 -6"/><path d="M0 8 L-10 4"/>
+    </g>
+  </g>
+
+  <!-- title -->
+  <rect y="196" width="240" height="120" fill="url(#vlScrim)"/>
+  <text x="120" y="238" text-anchor="middle" fill="#bfe0e8" font-family="Georgia, 'Times New Roman', serif" font-size="11" letter-spacing="3">POETRY</text>
+  <text x="120" y="272" text-anchor="middle" fill="#f6f2e6" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="28">Verses</text>
+  <text x="120" y="300" text-anchor="middle" fill="#f6f2e6" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="28">&amp; Light</text>
+</svg>

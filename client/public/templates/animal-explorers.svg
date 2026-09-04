@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 316" width="240" height="316" role="img" aria-label="Animal Explorers">
+  <defs>
+    <linearGradient id="aeSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#bfe89a"/>
+      <stop offset="0.5" stop-color="#5fb277"/>
+      <stop offset="1" stop-color="#2c7a52"/>
+    </linearGradient>
+    <radialGradient id="aeSun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff6d0"/>
+      <stop offset="1" stop-color="#ffe08a"/>
+    </radialGradient>
+    <linearGradient id="aeScrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f3324" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0a2419" stop-opacity="0.93"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="240" height="316" fill="url(#aeSky)"/>
+  <circle cx="120" cy="86" r="30" fill="url(#aeSun)" opacity="0.9"/>
+
+  <!-- big leaves -->
+  <g fill="#2f8f5f" opacity="0.9">
+    <path d="M0 0 C 60 30 60 110 6 150 C 40 90 20 40 0 30 Z"/>
+    <path d="M240 0 C 180 26 180 100 232 140 C 200 84 220 38 240 26 Z"/>
+  </g>
+  <g stroke="#1e6b45" stroke-width="1.5" opacity="0.6" fill="none">
+    <path d="M8 8 C 44 44 44 104 8 140"/>
+    <path d="M232 8 C 196 40 196 100 230 132"/>
+  </g>
+
+  <!-- ground -->
+  <path d="M0 214 C 70 196 170 210 240 198 L240 316 L0 316 Z" fill="#256b47"/>
+
+  <!-- fox sitting -->
+  <g>
+    <path d="M104 210 q16 -30 32 0 q6 22 -16 26 q-22 -4 -16 -26 z" fill="#e08a3c"/>
+    <path d="M108 190 l-6 -16 l14 8 z" fill="#e08a3c"/>
+    <path d="M132 190 l6 -16 l-14 8 z" fill="#e08a3c"/>
+    <path d="M112 206 q8 10 16 0 q-2 12 -8 12 q-6 0 -8 -12 z" fill="#fff3e2"/>
+    <circle cx="115" cy="200" r="2" fill="#2a1a12"/>
+    <circle cx="129" cy="200" r="2" fill="#2a1a12"/>
+    <path d="M136 214 q22 4 26 -8 q-6 16 -26 12 z" fill="#e08a3c"/>
+    <path d="M156 210 q6 -2 6 -8" stroke="#fff3e2" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- paw prints -->
+  <g fill="#1e6b45" opacity="0.55">
+    <g transform="translate(52 200)"><ellipse cx="0" cy="4" rx="4" ry="5"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-5" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g>
+    <g transform="translate(70 216)"><ellipse cx="0" cy="4" rx="4" ry="5"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-5" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g>
+  </g>
+
+  <!-- title -->
+  <rect y="196" width="240" height="120" fill="url(#aeScrim)"/>
+  <text x="120" y="238" text-anchor="middle" fill="#bfe89a" font-family="Georgia, 'Times New Roman', serif" font-size="11" letter-spacing="3">ANIMAL TALES</text>
+  <text x="120" y="272" text-anchor="middle" fill="#fdf6e3" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="29">Animal</text>
+  <text x="120" y="300" text-anchor="middle" fill="#fdf6e3" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="29">Explorers</text>
+</svg>

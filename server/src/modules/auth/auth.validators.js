@@ -1,0 +1,44 @@
+import { z } from 'zod';
+
+const email = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, 'Enter your email address')
+  .email('Enter a valid email address')
+  .max(254);
+
+/**
+ * Length is the requirement that actually resists guessing; composition rules
+ * mostly push people toward predictable substitutions. Twelve characters, with
+ * an upper bound because bcrypt silently ignores bytes past 72.
+ */
+const password = z
+  .string()
+  .min(12, 'Use at least 12 characters')
+  .max(72, 'Use at most 72 characters');
+
+export const registerSchema = z.object({
+  name: z.string().trim().min(2, 'Enter your name').max(120),
+  email,
+  password,
+});
+
+export const loginSchema = z.object({
+  email,
+  password: z.string().min(1, 'Enter your password').max(72),
+});
+
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20, 'This reset link is not valid'),
+  password,
+});
+
+export default {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+};

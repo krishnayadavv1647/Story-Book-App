@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 316" width="240" height="316" role="img" aria-label="The Midnight Case">
+  <defs>
+    <linearGradient id="mcSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1424"/>
+      <stop offset="0.55" stop-color="#132135"/>
+      <stop offset="1" stop-color="#080d18"/>
+    </linearGradient>
+    <linearGradient id="mcLamp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe6a8" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffe6a8" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="mcScrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0f1c" stop-opacity="0"/>
+      <stop offset="1" stop-color="#05080f" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="240" height="316" fill="url(#mcSky)"/>
+
+  <!-- moon haze -->
+  <circle cx="188" cy="52" r="22" fill="#c7d4e6" opacity="0.35"/>
+  <circle cx="180" cy="48" r="20" fill="#0b1424" opacity="0.6"/>
+
+  <!-- street lamp + light cone -->
+  <g>
+    <path d="M64 60 L96 60 L118 210 L42 210 Z" fill="url(#mcLamp)" opacity="0.6"/>
+    <rect x="78" y="48" width="4" height="150" fill="#1c2b40"/>
+    <ellipse cx="80" cy="48" rx="12" ry="7" fill="#ffe6a8"/>
+    <path d="M72 48 h16 l-3 -8 h-10 z" fill="#243550"/>
+  </g>
+
+  <!-- rain -->
+  <g stroke="#9fb4d0" stroke-width="1" opacity="0.35">
+    <path d="M30 70 l-6 16"/><path d="M120 40 l-6 16"/><path d="M150 90 l-6 16"/>
+    <path d="M200 70 l-6 16"/><path d="M60 120 l-6 16"/><path d="M170 150 l-6 16"/>
+    <path d="M210 130 l-6 16"/><path d="M100 100 l-6 16"/>
+  </g>
+
+  <!-- wet pavement -->
+  <rect y="196" width="240" height="120" fill="#0a1120"/>
+  <ellipse cx="80" cy="206" rx="30" ry="5" fill="#ffe6a8" opacity="0.12"/>
+
+  <!-- coat-and-hat silhouette -->
+  <g fill="#05070d">
+    <path d="M80 150 q16 -4 32 0 l6 60 h-44 z"/>
+    <circle cx="96" cy="140" r="12"/>
+    <path d="M80 134 q16 -10 32 0 l4 4 h-40 z"/>
+    <ellipse cx="96" cy="133" rx="24" ry="4"/>
+  </g>
+
+  <!-- title -->
+  <rect y="196" width="240" height="120" fill="url(#mcScrim)"/>
+  <text x="120" y="234" text-anchor="middle" fill="#c9a86a" font-family="Georgia, 'Times New Roman', serif" font-size="11" letter-spacing="3">MYSTERY</text>
+  <text x="120" y="262" text-anchor="middle" fill="#f0ece2" font-family="Georgia, 'Times New Roman', serif" font-size="18">The Midnight</text>
+  <text x="120" y="296" text-anchor="middle" fill="#f7f2e6" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="34" letter-spacing="1">CASE</text>
+</svg>
