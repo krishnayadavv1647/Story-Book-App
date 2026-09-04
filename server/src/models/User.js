@@ -14,7 +14,20 @@ const userSchema = new mongoose.Schema(
       match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
     // `select: false` — a hash must be asked for explicitly, never returned by default.
-    passwordHash: { type: String, required: true, select: false },
+    // Required for everyone EXCEPT a Google-only account, which authenticates
+    // through Google and never sets one.
+    passwordHash: {
+      type: String,
+      required: function passwordRequiredUnlessGoogle() {
+        return !this.googleId;
+      },
+      select: false,
+    },
+    // The Google account's stable subject id (`sub`), set when an account is
+    // created through or linked to Sign in with Google. Null for password-only
+    // accounts. Uniqueness is enforced by a partial index below so the many
+    // null values never collide.
+    googleId: { type: String, default: null },
     name: { type: String, required: true, trim: true, maxlength: 120 },
     avatarUrl: { type: String, default: null },
     role: { type: String, enum: USER_ROLES, default: 'user', index: true },
@@ -50,6 +63,13 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ createdAt: -1 });
+// Unique only among real Google ids. A partial filter (not `sparse`) is what
+// makes this safe with the `null` default: sparse would still index every
+// password account's null and collide, so it is scoped to string values.
+userSchema.index(
+  { googleId: 1 },
+  { unique: true, partialFilterExpression: { googleId: { $type: 'string' } } },
+);
 
 /** Write-only virtual: assigning it queues a hash on save. */
 userSchema

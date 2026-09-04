@@ -208,7 +208,7 @@ export function BookPreview({
                         <div
                           aria-hidden="true"
                           data-testid="safe-area-guide"
-                          className="pointer-events-none absolute rounded-sm border border-dashed border-teal-bright/80"
+                          className="pointer-events-none absolute rounded-sm border border-dashed border-teal-bright"
                           style={{ inset: `${safeFraction * 100}%` }}
                         />
                       )}

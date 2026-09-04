@@ -86,6 +86,56 @@ export async function login({ email, password }, req) {
 }
 
 /**
+ * Sign in (or up) from an already-verified Google profile (the callback has
+ * exchanged the code and verified the ID token before calling this).
+ *
+ * Matching is by Google `sub` — the one identifier Google guarantees is stable
+ * — and falls back to the verified email, so a visitor who first registered
+ * with a password and later signs in with Google lands on the *same* account
+ * rather than a duplicate. A brand-new visitor gets an account with no password
+ * (they sign in through Google) and an email already marked verified, because
+ * Google verified it for us.
+ */
+export async function signInWithGoogleProfile(profile, req) {
+  // An unverified Google email must never be trusted to match an existing
+  // account — that would let someone claim another person's address.
+  if (!profile.email || !profile.emailVerified) {
+    throw ApiError.unauthorized('Your Google account needs a verified email address to sign in');
+  }
+
+  let user = await User.findOne({ googleId: profile.sub });
+
+  if (!user) {
+    const byEmail = await User.findOne({ email: profile.email });
+    if (byEmail) {
+      // Link Google to the existing account. The password, if any, still works.
+      byEmail.googleId = profile.sub;
+      if (!byEmail.avatarUrl && profile.picture) byEmail.avatarUrl = profile.picture;
+      if (!byEmail.emailVerifiedAt) byEmail.emailVerifiedAt = new Date();
+      user = byEmail;
+    } else {
+      user = new User({
+        email: profile.email,
+        name: profile.name,
+        googleId: profile.sub,
+        avatarUrl: profile.picture,
+        emailVerifiedAt: new Date(),
+      });
+    }
+  }
+
+  if (user.status !== 'active') {
+    throw ApiError.forbidden('This account is not available');
+  }
+
+  user.lastLoginAt = new Date();
+  await user.save();
+
+  const tokens = await issueSession(user, req);
+  return { ...tokens, session: await toSessionPayload(user) };
+}
+
+/**
  * Rotation with reuse detection.
  *
  * Every refresh burns the presented token and issues a new one in the same
@@ -199,6 +249,7 @@ export async function resetPassword({ token, password }) {
 export default {
   register,
   login,
+  signInWithGoogleProfile,
   rotateRefreshToken,
   logout,
   revokeAllSessions,

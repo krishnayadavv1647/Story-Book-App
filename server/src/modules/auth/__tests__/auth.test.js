@@ -1,10 +1,43 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
 import { createApp, API_PREFIX } from '../../../app.js';
 import { RefreshToken, User } from '../../../models/index.js';
+
+// The real provider reaches Google's servers, which the suite must never do.
+// Replacing this one seam lets the whole callback → find-or-create → session
+// path run for real over HTTP, while the "code" is just a JSON profile the test
+// controls: `exchangeCodeForProfile(code)` decodes it, so each case dictates
+// exactly what Google "returned".
+vi.mock('../../../providers/google/googleAuth.js', () => ({
+  isGoogleAuthConfigured: () => true,
+  getRedirectUri: () => 'http://localhost:5000/api/v1/auth/google/callback',
+  buildAuthUrl: ({ state }) => `https://accounts.google.com/o/oauth2/v2/auth?state=${state}`,
+  exchangeCodeForProfile: vi.fn(async (code) => {
+    const p = JSON.parse(code);
+    return {
+      sub: p.sub,
+      email: p.email ?? null,
+      emailVerified: p.emailVerified ?? false,
+      name: p.name ?? 'Google Reader',
+      picture: p.picture ?? null,
+    };
+  }),
+}));
+
+/** A stand-in authorization code the mocked exchange will decode into a profile. */
+function googleCode(overrides = {}) {
+  return JSON.stringify({
+    sub: 'google-sub-1',
+    email: 'krishna@example.com',
+    emailVerified: true,
+    name: 'Krishna Yadav',
+    picture: 'https://example.com/a.png',
+    ...overrides,
+  });
+}
 
 let mongod;
 let app;
@@ -149,6 +182,106 @@ describe('POST /auth/login', () => {
       .send({ email: CREDENTIALS.email, password: CREDENTIALS.password });
 
     expect(res.status).toBe(403);
+  });
+});
+
+describe('Sign in with Google (Authorization Code flow)', () => {
+  /** The callback with a state that matches its cookie, as the real flow does. */
+  const callback = (code, { state = 's1', cookieState = 's1' } = {}) => {
+    const req = request(app).get(auth('/google/callback')).query({ code, state });
+    if (cookieState !== null) req.set('Cookie', `sb_gstate=${cookieState}`);
+    return req;
+  };
+
+  const refreshSet = (res) =>
+    (res.headers['set-cookie'] ?? []).find((c) => c.startsWith('sb_refresh='));
+
+  it('redirects to Google and plants a state cookie', async () => {
+    const res = await request(app).get(auth('/google')).redirects(0);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain('accounts.google.com');
+    const stateCookie = (res.headers['set-cookie'] ?? []).find((c) => c.startsWith('sb_gstate='));
+    expect(stateCookie).toContain('HttpOnly');
+  });
+
+  it('creates a passwordless account from a verified Google profile', async () => {
+    const res = await callback(googleCode({ email: 'newbie@example.com' })).redirects(0);
+
+    // Lands back in the app with a session cookie, exactly like password login.
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toMatch(/\/$/);
+    expect(refreshSet(res)).toContain('HttpOnly');
+
+    // The stored account carries the Google id and has no password at all.
+    const user = await User.findOne({ email: 'newbie@example.com' }).select('+passwordHash');
+    expect(user.googleId).toBe('google-sub-1');
+    expect(user.passwordHash).toBeFalsy();
+    expect(user.emailVerifiedAt).not.toBeNull();
+  });
+
+  it('links Google to an existing password account with the same email', async () => {
+    await registerUser(); // password account for krishna@example.com
+
+    const res = await callback(googleCode()).redirects(0);
+    expect(res.status).toBe(302);
+    expect(refreshSet(res)).toBeTruthy();
+
+    // Still one account — linked, not duplicated.
+    expect(await User.countDocuments({ email: CREDENTIALS.email })).toBe(1);
+    const user = await User.findOne({ email: CREDENTIALS.email }).select('+passwordHash');
+    expect(user.googleId).toBe('google-sub-1');
+    // The password still works after linking.
+    expect(user.passwordHash).toBeTruthy();
+
+    const login = await request(app)
+      .post(auth('/login'))
+      .send({ email: CREDENTIALS.email, password: CREDENTIALS.password });
+    expect(login.status).toBe(200);
+  });
+
+  it('returns the same account on a second Google sign-in', async () => {
+    await callback(googleCode({ email: 'repeat@example.com' })).redirects(0);
+    await callback(googleCode({ email: 'repeat@example.com' })).redirects(0);
+
+    expect(await User.countDocuments()).toBe(1);
+  });
+
+  it('rejects a Google account whose email is not verified', async () => {
+    const res = await callback(googleCode({ emailVerified: false })).redirects(0);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain('error=google_failed');
+    expect(refreshSet(res)).toBeFalsy();
+    expect(await User.countDocuments()).toBe(0);
+  });
+
+  it('does not sign a suspended account back in', async () => {
+    await callback(googleCode()).redirects(0);
+    await User.updateOne({ email: CREDENTIALS.email }, { $set: { status: 'suspended' } });
+
+    const res = await callback(googleCode()).redirects(0);
+    expect(res.headers.location).toContain('error=google_failed');
+    expect(refreshSet(res)).toBeFalsy();
+  });
+
+  it('rejects a callback whose state does not match its cookie', async () => {
+    const res = await callback(googleCode(), { state: 's1', cookieState: 'different' }).redirects(0);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain('error=google_failed');
+    expect(await User.countDocuments()).toBe(0);
+  });
+
+  it('treats a declined consent as a cancel, not a failure', async () => {
+    const res = await request(app)
+      .get(auth('/google/callback'))
+      .query({ error: 'access_denied' })
+      .set('Cookie', 'sb_gstate=s1')
+      .redirects(0);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain('error=google_denied');
   });
 });
 

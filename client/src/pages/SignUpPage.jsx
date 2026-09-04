@@ -5,6 +5,7 @@ import { AuthLayout } from '../components/layout/AuthLayout.jsx';
 import { Button, Callout, Field, Input } from '../components/common/index.js';
 import { useAuthStore } from '../store/authStore.js';
 import { useAuthSubmit } from '../features/auth/useAuthSubmit.js';
+import { GoogleSignInButton } from '../features/auth/GoogleSignInButton.jsx';
 
 export function SignUpPage() {
   const signUp = useAuthStore((s) => s.signUp);
@@ -76,6 +77,8 @@ export function SignUpPage() {
           Create account
         </Button>
       </form>
+
+      <GoogleSignInButton text="Sign up with Google" />
     </AuthLayout>
   );
 }

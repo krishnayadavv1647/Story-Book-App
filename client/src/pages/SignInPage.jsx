@@ -5,6 +5,14 @@ import { AuthLayout } from '../components/layout/AuthLayout.jsx';
 import { Button, Callout, Field, Input } from '../components/common/index.js';
 import { useAuthStore } from '../store/authStore.js';
 import { useAuthSubmit } from '../features/auth/useAuthSubmit.js';
+import { GoogleSignInButton } from '../features/auth/GoogleSignInButton.jsx';
+
+/** Google redirects back with `?error=...` when the OAuth round-trip fails. */
+const GOOGLE_ERRORS = {
+  google_denied: 'Google sign-in was cancelled.',
+  google_failed: "Google sign-in didn't work. Please try again.",
+  google_unavailable: 'Google sign-in is not available right now.',
+};
 
 export function SignInPage() {
   const signIn = useAuthStore((s) => s.signIn);
@@ -13,6 +21,7 @@ export function SignInPage() {
 
   // Return the user to whatever they were trying to reach.
   const destination = location.state?.from?.pathname ?? '/';
+  const googleError = GOOGLE_ERRORS[new URLSearchParams(location.search).get('error')] ?? null;
 
   const handler = useCallback(
     async (values) => {
@@ -44,6 +53,12 @@ export function SignInPage() {
         </>
       }
     >
+      {googleError && (
+        <Callout tone="danger" className="mb-4">
+          {googleError}
+        </Callout>
+      )}
+
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {formError && <Callout tone="danger">{formError}</Callout>}
 
@@ -78,6 +93,8 @@ export function SignInPage() {
           Sign in
         </Button>
       </form>
+
+      <GoogleSignInButton text="Continue with Google" />
     </AuthLayout>
   );
 }

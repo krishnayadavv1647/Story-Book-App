@@ -112,6 +112,18 @@ const schema = z.object({
   COOKIE_SECURE: bool(isProd),
   BCRYPT_ROUNDS: int(12),
 
+  // Sign in with Google — server-side Authorization Code flow. All three live
+  // here, on the server, and never in the client:
+  //   · GOOGLE_CLIENT_ID     — the OAuth client id (public).
+  //   · GOOGLE_CLIENT_SECRET — the client secret (guarded; see SERVER_ONLY…).
+  //   · GOOGLE_REDIRECT_URI  — where Google returns the user. Blank falls back
+  //     to `${SERVER_PUBLIC_URL}/api/v1/auth/google/callback`, which is what to
+  //     register under the credential's "Authorized redirect URIs" in Google.
+  // Google sign-in is enabled only when the id AND the secret are both set.
+  GOOGLE_CLIENT_ID: str(''),
+  GOOGLE_CLIENT_SECRET: str(''),
+  GOOGLE_REDIRECT_URI: str(''),
+
   RATE_LIMIT_WINDOW_MS: int(60_000),
   RATE_LIMIT_AUTH_MAX: int(10),
   RATE_LIMIT_CHAT_MAX: int(30),
@@ -198,6 +210,7 @@ export const SERVER_ONLY_SECRET_KEYS = Object.freeze([
   'GEMINI_API_KEY',
   'KIE_API_KEY',
   'KIE_CALLBACK_SECRET',
+  'GOOGLE_CLIENT_SECRET',
   'STORAGE_ACCESS_KEY_ID',
   'STORAGE_SECRET_ACCESS_KEY',
   'REDIS_URL',

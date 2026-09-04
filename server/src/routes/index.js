@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import healthRoutes from './health.routes.js';
+import configRoutes from './config.routes.js';
 import authRoutes from '../modules/auth/auth.routes.js';
 import bookRoutes from '../modules/books/books.routes.js';
 import storyRoutes from '../modules/story-generation/story.routes.js';
@@ -19,6 +20,7 @@ import adminRoutes from '../modules/admin/admin.routes.js';
 const router = Router();
 
 router.use(healthRoutes);
+router.use(configRoutes);
 router.use('/auth', authRoutes);
 router.use('/books', bookRoutes);
 router.use('/story', storyRoutes);

@@ -1,7 +1,15 @@
+import crypto from 'node:crypto';
+
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { sendCreated, sendSuccess } from '../../utils/apiResponse.js';
-import { isProduction } from '../../config/env.js';
+import { env, isProduction } from '../../config/env.js';
+import { logger } from '../../config/logger.js';
 import { REFRESH_COOKIE, refreshCookieOptions } from '../../utils/tokens.js';
+import {
+  buildAuthUrl,
+  exchangeCodeForProfile,
+  isGoogleAuthConfigured,
+} from '../../providers/google/googleAuth.js';
 import * as authService from './auth.service.js';
 
 /**
@@ -16,6 +24,29 @@ function setRefreshCookie(res, refreshToken) {
 function clearRefreshCookie(res) {
   const { maxAge, ...options } = refreshCookieOptions();
   res.clearCookie(REFRESH_COOKIE, options);
+}
+
+/**
+ * The OAuth `state` is stored in a short-lived httpOnly cookie and compared on
+ * the callback — a value the attacker cannot forge, which is what makes a
+ * planted callback fail. Same path/SameSite as the refresh cookie.
+ */
+const GSTATE_COOKIE = 'sb_gstate';
+
+function stateCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: env.COOKIE_SECURE,
+    sameSite: 'lax',
+    path: '/api/v1/auth',
+    maxAge: 10 * 60 * 1000,
+  };
+}
+
+/** Where to send the browser back to once the OAuth round-trip is over. */
+function clientRedirect(pathAndQuery) {
+  const base = env.CLIENT_ORIGIN[0].replace(/\/$/, '');
+  return `${base}${pathAndQuery}`;
 }
 
 export const register = asyncHandler(async (req, res) => {
@@ -33,6 +64,55 @@ export const login = asyncHandler(async (req, res) => {
 
   setRefreshCookie(res, refreshToken);
   return sendSuccess(res, { data: { accessToken, ...session }, message: 'Signed in' });
+});
+
+/**
+ * Step 1 of Sign in with Google: send the browser to Google's consent screen.
+ * A random `state` is planted in a cookie and echoed in the URL so the callback
+ * can prove the round-trip started here.
+ */
+export const googleStart = asyncHandler(async (req, res) => {
+  if (!isGoogleAuthConfigured()) {
+    return res.redirect(clientRedirect('/sign-in?error=google_unavailable'));
+  }
+
+  const state = crypto.randomBytes(16).toString('base64url');
+  res.cookie(GSTATE_COOKIE, state, stateCookieOptions());
+  return res.redirect(buildAuthUrl({ state }));
+});
+
+/**
+ * Step 2: Google returns the user here with a one-time `code`. We verify the
+ * `state`, exchange the code for the verified profile, issue our own session as
+ * an httpOnly refresh cookie, and hand the browser back to the app — which
+ * turns that cookie into a live session through its normal silent refresh. The
+ * access token is never put in the URL.
+ */
+export const googleCallback = asyncHandler(async (req, res) => {
+  const { maxAge, ...clearOptions } = stateCookieOptions();
+  res.clearCookie(GSTATE_COOKIE, clearOptions);
+
+  const { code, state, error } = req.query;
+  const cookieState = req.cookies?.[GSTATE_COOKIE];
+
+  if (error) {
+    // The user declined at Google's screen — not an error worth alarming them.
+    return res.redirect(clientRedirect('/sign-in?error=google_denied'));
+  }
+
+  if (!code || !state || !cookieState || state !== cookieState) {
+    return res.redirect(clientRedirect('/sign-in?error=google_failed'));
+  }
+
+  try {
+    const profile = await exchangeCodeForProfile(String(code));
+    const { refreshToken } = await authService.signInWithGoogleProfile(profile, req);
+    setRefreshCookie(res, refreshToken);
+    return res.redirect(clientRedirect('/'));
+  } catch (err) {
+    logger.warn({ err }, 'Google sign-in callback failed');
+    return res.redirect(clientRedirect('/sign-in?error=google_failed'));
+  }
 });
 
 export const refresh = asyncHandler(async (req, res) => {
@@ -76,4 +156,14 @@ export const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
-export default { register, login, refresh, logout, session, forgotPassword, resetPassword };
+export default {
+  register,
+  login,
+  googleStart,
+  googleCallback,
+  refresh,
+  logout,
+  session,
+  forgotPassword,
+  resetPassword,
+};

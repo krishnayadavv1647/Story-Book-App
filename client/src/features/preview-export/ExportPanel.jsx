@@ -91,8 +91,8 @@ const PRINT_BINDINGS = [
 ];
 
 const ISSUE_TONE = {
-  error: 'border-danger/60 bg-danger-soft text-ink',
-  warning: 'border-warning/60 bg-warning-soft text-ink',
+  error: 'border-danger bg-danger-soft text-ink',
+  warning: 'border-warning bg-warning-soft text-ink',
   info: 'border-hairline bg-surface-secondary text-ink-muted',
 };
 
