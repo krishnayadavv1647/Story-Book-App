@@ -65,10 +65,13 @@ export const REFRESH_COOKIE = 'sb_refresh';
  * the CSRF surface down to a single, side-effect-limited endpoint.
  */
 export function refreshCookieOptions() {
+  const sameSite = env.COOKIE_SAMESITE;
   return {
     httpOnly: true,
-    secure: env.COOKIE_SECURE,
-    sameSite: 'lax',
+    // SameSite=None is only honoured on a Secure cookie, so force it — a
+    // cross-origin frontend cannot receive the session otherwise.
+    secure: env.COOKIE_SECURE || sameSite === 'none',
+    sameSite,
     path: '/api/v1/auth',
     maxAge: durationToMs(env.JWT_REFRESH_TTL),
   };

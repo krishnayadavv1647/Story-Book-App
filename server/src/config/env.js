@@ -110,6 +110,13 @@ const schema = z.object({
   COOKIE_SECRET: secret(16),
   COOKIE_DOMAIN: str('localhost'),
   COOKIE_SECURE: bool(isProd),
+  // How the refresh-session cookie is scoped across sites. `lax` is right when
+  // the client and API share a site (local dev via the Vite proxy, or a
+  // same-domain deploy). Set `none` when the frontend is on a DIFFERENT origin
+  // from the API — otherwise the browser refuses to send the cookie on the
+  // SPA's cross-site `/auth/refresh` call and the session never sticks. `none`
+  // forces Secure (browsers require it), so it needs HTTPS on both ends.
+  COOKIE_SAMESITE: z.enum(['lax', 'none', 'strict']).default('lax'),
   BCRYPT_ROUNDS: int(12),
 
   // Encrypts users' own provider API keys (BYOK) at rest. Optional: when unset,
