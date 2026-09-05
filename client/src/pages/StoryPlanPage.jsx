@@ -97,7 +97,7 @@ export function StoryPlanPage() {
         </Callout>
       )}
 
-      <div className="mt-6 grid grid-cols-[1038fr_520fr] gap-[30px] pb-6">
+      <div className="mt-6 grid grid-cols-1 gap-6 pb-6 lg:grid-cols-[1038fr_520fr] lg:gap-[30px]">
         <div className="min-w-0">
           <BookInformation book={plan.book} onSaveField={plan.saveBookField} />
 

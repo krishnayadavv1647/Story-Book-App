@@ -146,7 +146,7 @@ function PageRow({
 
       {expanded && (
         <div className="mt-4 pl-9">
-          <div className="grid grid-cols-[486fr_492fr] gap-5">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[486fr_492fr] lg:gap-5">
             <AutoTextarea
               label="Narration"
               value={page.narration}

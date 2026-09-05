@@ -1,4 +1,4 @@
-import { BookOpen, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { cn } from '../../lib/cn.js';
 
 /**
@@ -32,10 +32,9 @@ export function AuthLayout({ title, subtitle, children, footer, className }) {
         {/* Form panel */}
         <div className="flex flex-col justify-center p-8 sm:p-10">
           <div className="mx-auto w-full max-w-[380px]">
-            <div className="flex items-center gap-3">
-              <BookOpen className="h-6 w-6 shrink-0 text-gold" aria-hidden="true" />
-              <span className="text-xl font-bold text-ink">StoryBook Studio</span>
-            </div>
+            {/* The full brand lockup (mark + wordmark) as one transparent PNG. */}
+            <img src="/logo.png" alt="StoryBook Studio" className="h-12 w-auto" />
+
 
             <h1 className="mt-8 text-3xl font-bold text-ink">{title}</h1>
             {subtitle && <p className="mt-2 text-base text-ink-muted">{subtitle}</p>}

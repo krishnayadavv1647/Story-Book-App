@@ -148,7 +148,7 @@ describe('story agent screen', () => {
     renderAgent();
 
     expect(await screen.findByLabelText(/AI Writer: ready, gemini-2\.5-flash/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Image Engine: not configured/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Image Engine: add your API key in Settings/i)).toBeInTheDocument();
   });
 
   it('warns when story generation is not configured', async () => {
@@ -158,7 +158,7 @@ describe('story agent screen', () => {
     );
     renderAgent();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/not configured on this server/i);
+    expect(await screen.findByRole('status')).toHaveTextContent(/Add key in Settings/i);
   });
 });
 

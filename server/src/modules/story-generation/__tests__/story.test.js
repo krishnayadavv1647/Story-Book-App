@@ -14,6 +14,7 @@ import {
   User,
 } from '../../../models/index.js';
 import { STORY_PLAN_PROMPT } from '../../../providers/gemini/prompts.js';
+import { encryptSecret } from '../../../utils/secretBox.js';
 
 let mongod;
 let app;
@@ -41,7 +42,18 @@ async function signUp(email = 'krishna@example.com') {
   const res = await request(app)
     .post(`${API_PREFIX}/auth/register`)
     .send({ name: 'Krishna Yadav', email, password: 'a-long-enough-passphrase' });
-  return { token: res.body.data.accessToken, userId: res.body.data.user.id };
+  const userId = res.body.data.user.id;
+  // BYOK: generation now uses the user's own keys, so seed them for the suite.
+  await User.updateOne(
+    { _id: userId },
+    {
+      $set: {
+        'apiKeys.gemini': encryptSecret('user-gemini-key'),
+        'apiKeys.kie': encryptSecret('user-kie-key'),
+      },
+    },
+  );
+  return { token: res.body.data.accessToken, userId };
 }
 
 const asUser = (req, token) => req.set('Authorization', `Bearer ${token}`);
@@ -142,6 +154,21 @@ describe('POST /story/plan', () => {
   it('requires authentication', async () => {
     const res = await request(app).post(story('/plan')).send({ prompt: 'x'.repeat(20) });
     expect(res.status).toBe(401);
+  });
+
+  it('refuses to generate when the user has not set their Gemini key', async () => {
+    // Register directly, bypassing the key-seeding `signUp` helper.
+    const account = await request(app)
+      .post(`${API_PREFIX}/auth/register`)
+      .send({ name: 'No Keys', email: 'nokeys@example.com', password: 'a-long-enough-passphrase' });
+    const token = account.body.data.accessToken;
+
+    const res = await generate(token);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('GEMINI_KEY_MISSING');
+    // It fails before any book, job, or model call.
+    expect(await Book.countDocuments()).toBe(0);
   });
 
   it('generates a plan and persists the book, its pages and its cast', async () => {
@@ -248,6 +275,34 @@ describe('POST /story/plan', () => {
     expect(calls[0].body.store).toBe(false);
   });
 
+});
+
+describe('POST /story/books/:bookId/regenerate', () => {
+  it('rebuilds the book but keeps the title and ending pages', async () => {
+    const { token } = await signUp();
+    stubGemini([{ plan: validPlan({ pageCount: 3 }) }]);
+    const created = await generate(token);
+    const { bookId } = created.body.data;
+
+    // Regenerating produces a different plan (two story pages this time).
+    stubGemini([{ plan: validPlan({ pageCount: 2 }) }]);
+    const res = await asUser(
+      request(app).post(story(`/books/${bookId}/regenerate`)),
+      token,
+    ).send();
+
+    expect(res.status).toBe(200);
+
+    // Regression: an older build's regenerate dropped the title/ending pages and
+    // shifted nothing, so a regenerated book opened straight onto the story with
+    // no title page and no "The End". The finished structure must survive.
+    const pages = await BookPage.find({ bookId }).sort({ order: 1 });
+    expect(pages.map((p) => p.type)).toEqual(['title', 'story', 'story', 'ending']);
+    expect(pages.map((p) => p.order)).toEqual([1, 2, 3, 4]);
+    expect(pages[0].title).toBe('Aarav and the Whispering Forest');
+    expect(pages[0].narration).toBe('Written by Krishna Yadav');
+    expect(pages.at(-1).title).toBe('The End');
+  });
 });
 
 describe('invalid model output', () => {

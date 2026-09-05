@@ -17,6 +17,7 @@ import { kieImageProvider } from '../../providers/kie/KieImageProvider.js';
 import { ingestRemoteImage, resolveAssetUrl } from '../../providers/storage/index.js';
 import { screenPrompt } from '../story-generation/moderation.js';
 import { addReference } from '../characters/characters.service.js';
+import { getUserApiKeys, requireUserApiKey } from '../users/users.service.js';
 import { BOOK_COVER_PROMPT, POSES, characterPrompt, coverPrompt, pagePrompt } from './prompts.js';
 
 /**
@@ -45,6 +46,9 @@ const MEDIA_KIND_BY_JOB = {
 export async function requestCharacterImage({ user, characterId, pose = 'front', bookId = null, signal }) {
   const character = await Character.findOne({ _id: characterId, ownerId: user._id });
   if (!character) throw ApiError.notFound('Character not found');
+
+  // BYOK: the user's own Kie.ai key. Fail before screening/job/credit work.
+  const apiKey = await requireUserApiKey(user._id, 'kie');
 
   const prompt = characterPrompt(character, pose);
 
@@ -118,6 +122,7 @@ export async function requestCharacterImage({ user, characterId, pose = 'front',
       referenceUrls,
       jobId: job._id,
       signal,
+      apiKey,
     });
 
     await GenerationJob.updateOne(
@@ -479,7 +484,9 @@ export async function pollOnce(jobId) {
 
   await GenerationJob.updateOne({ _id: jobId }, { $inc: { pollAttempts: 1 } });
 
-  const normalized = await kieImageProvider.getTaskStatus(job.externalTaskId);
+  // Detached from any request: resolve the owner's own Kie key to poll with.
+  const { kie: apiKey } = await getUserApiKeys(job.ownerId);
+  const normalized = await kieImageProvider.getTaskStatus(job.externalTaskId, { apiKey });
 
   if (!normalized.isTerminal) {
     await GenerationJob.updateOne({ _id: jobId }, { $set: { progress: normalized.progress ?? 0 } });
@@ -524,7 +531,9 @@ export async function handleCallback({ token, body }) {
   stopPolling(jobId);
 
   const job = await GenerationJob.findById(jobId);
-  const normalized = await kieImageProvider.getTaskStatus(job.externalTaskId);
+  // The callback route is unauthenticated: resolve the owner's Kie key by job.
+  const { kie: apiKey } = await getUserApiKeys(job.ownerId);
+  const normalized = await kieImageProvider.getTaskStatus(job.externalTaskId, { apiKey });
   const result = await settleJob(jobId, normalized);
 
   return { accepted: true, ...result };
@@ -582,6 +591,8 @@ async function referenceUrlsForCast(cast) {
 export async function requestPageImage({ user, book, pageId, signal }) {
   const page = await BookPage.findOne({ _id: pageId, bookId: book._id });
   if (!page) throw ApiError.notFound('Page not found');
+
+  const apiKey = await requireUserApiKey(user._id, 'kie');
 
   const cast = await Character.find({ _id: { $in: page.characterIds ?? [] } });
   const prompt = pagePrompt({ page, cast, book });
@@ -649,6 +660,7 @@ export async function requestPageImage({ user, book, pageId, signal }) {
       referenceUrls: await referenceUrlsForCast(cast),
       jobId: job._id,
       signal,
+      apiKey,
     });
 
     await GenerationJob.updateOne(
@@ -882,6 +894,8 @@ async function ensureCoverPromptVersion() {
  * and a failed cover must never mark the book itself as failed.
  */
 export async function requestBookCover({ user, book, signal }) {
+  const apiKey = await requireUserApiKey(user._id, 'kie');
+
   const cast = await Character.find({ _id: { $in: book.characterIds ?? [] } });
   const prompt = coverPrompt({ book, cast });
 
@@ -950,6 +964,7 @@ export async function requestBookCover({ user, book, signal }) {
       referenceUrls: await referenceUrlsForCast(cast),
       jobId: job._id,
       signal,
+      apiKey,
     });
 
     await GenerationJob.updateOne(

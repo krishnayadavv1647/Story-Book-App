@@ -12,6 +12,13 @@ export const useUiStore = create((set) => ({
 
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+
+  // On small screens the sidebar is an off-canvas drawer rather than a fixed
+  // column. This tracks whether that drawer is open; it is meaningless on
+  // desktop, where the sidebar is always in view.
+  mobileNavOpen: false,
+  openMobileNav: () => set({ mobileNavOpen: true }),
+  closeMobileNav: () => set({ mobileNavOpen: false }),
 }));
 
 export default useUiStore;

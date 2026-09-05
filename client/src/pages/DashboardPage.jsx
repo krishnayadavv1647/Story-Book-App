@@ -83,8 +83,10 @@ export function DashboardPage() {
               {recent.data.items.map((book) => (
                 <li key={book._id ?? book.id}>
                   {/* Every card is now the same book-shaped aspect ratio, so the
-                      grid no longer needs stretching to keep a row level. */}
-                  <BookCard book={book} />
+                      grid no longer needs stretching to keep a row level. On the
+                      dashboard a card leads to the My Books library rather than
+                      straight into the book. */}
+                  <BookCard book={book} to="/books" />
                 </li>
               ))}
             </ul>

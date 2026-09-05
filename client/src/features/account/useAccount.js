@@ -85,6 +85,20 @@ export function useProfile() {
     onError: (err) => setError(describe(err)),
   });
 
+  const apiKeys = useMutation({
+    mutationFn: accountApi.setApiKeys,
+    onMutate: () => {
+      setError(null);
+      setSaved(null);
+    },
+    onSuccess: async () => {
+      // Refresh the "key set / not set" flags on the profile.
+      await queryClient.invalidateQueries({ queryKey: accountKeys.profile() });
+      setSaved('API keys updated.');
+    },
+    onError: (err) => setError(describe(err)),
+  });
+
   return {
     profile: profile.data ?? null,
     isPending: profile.isPending,
@@ -92,6 +106,7 @@ export function useProfile() {
     refetch: profile.refetch,
     save,
     password,
+    apiKeys,
     error,
     saved,
     dismiss: () => {

@@ -95,10 +95,12 @@ const isTransient = (err) =>
 /**
  * One attempt. `call` below wraps this with the retry budget.
  */
-async function attempt(path, { method = 'GET', body, query, signal } = {}) {
-  if (!env.KIE_API_KEY) {
-    throw new KieError('Image generation is not configured', {
-      status: 503,
+async function attempt(path, { method = 'GET', body, query, signal, apiKey } = {}) {
+  // BYOK: the caller's own Kie.ai key. The server env key is never used for
+  // generation, so an absent key is a caller error, not a server misconfig.
+  if (!apiKey) {
+    throw new KieError('No Kie.ai API key was provided', {
+      status: 400,
       code: 'KIE_NOT_CONFIGURED',
     });
   }
@@ -118,7 +120,7 @@ async function attempt(path, { method = 'GET', body, query, signal } = {}) {
   try {
     const headers = {
       'content-type': 'application/json',
-      authorization: `Bearer ${env.KIE_API_KEY}`,
+      authorization: `Bearer ${apiKey}`,
     };
     if (env.KIE_API_VERSION) headers['x-api-version'] = env.KIE_API_VERSION;
 
@@ -282,7 +284,16 @@ export class KieImageProvider {
     return { verified: true, hintedState: body?.data?.state ?? null };
   }
 
-  async createTask({ prompt, aspectRatio, resolution, outputFormat, referenceUrls, jobId, signal }) {
+  async createTask({
+    prompt,
+    aspectRatio,
+    resolution,
+    outputFormat,
+    referenceUrls,
+    jobId,
+    signal,
+    apiKey,
+  }) {
     const data = await call(env.KIE_CREATE_PATH, {
       method: 'POST',
       body: {
@@ -291,6 +302,7 @@ export class KieImageProvider {
         input: this.buildInput({ prompt, aspectRatio, resolution, outputFormat, referenceUrls }),
       },
       signal,
+      apiKey,
     });
 
     const taskId = data?.taskId;
@@ -301,8 +313,12 @@ export class KieImageProvider {
     return { externalTaskId: taskId };
   }
 
-  async getTaskStatus(externalTaskId, { signal } = {}) {
-    const data = await call(env.KIE_STATUS_PATH, { query: { taskId: externalTaskId }, signal });
+  async getTaskStatus(externalTaskId, { signal, apiKey } = {}) {
+    const data = await call(env.KIE_STATUS_PATH, {
+      query: { taskId: externalTaskId },
+      signal,
+      apiKey,
+    });
     return this.normalizeResult(data);
   }
 

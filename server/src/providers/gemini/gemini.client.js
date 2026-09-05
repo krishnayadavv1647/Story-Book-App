@@ -97,10 +97,13 @@ export async function callInteractions({
   temperature = env.GEMINI_TEMPERATURE,
   maxOutputTokens = env.GEMINI_MAX_OUTPUT_TOKENS,
   signal,
+  // BYOK: the caller's own Gemini key. The server env key is never used for
+  // generation, so an absent key is a caller error, not a server misconfig.
+  apiKey,
 } = {}) {
-  if (!env.GEMINI_API_KEY) {
-    throw new GeminiError('Story generation is not configured', {
-      status: 503,
+  if (!apiKey) {
+    throw new GeminiError('No Gemini API key was provided', {
+      status: 400,
       code: 'GEMINI_NOT_CONFIGURED',
     });
   }
@@ -148,7 +151,7 @@ export async function callInteractions({
       headers: {
         'content-type': 'application/json',
         // Header auth, never a query parameter — a key in a URL ends up in logs.
-        'x-goog-api-key': env.GEMINI_API_KEY,
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify(body),
       signal: timeout.signal,

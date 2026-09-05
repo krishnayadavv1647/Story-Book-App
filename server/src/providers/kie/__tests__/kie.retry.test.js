@@ -23,7 +23,7 @@ describe('a transient provider failure', () => {
       .mockResolvedValueOnce(json(200, created));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await kieImageProvider.createTask({ prompt: 'a forest' });
+    const result = await kieImageProvider.createTask({ prompt: 'a forest', apiKey: 'test-kie-key' });
 
     expect(result.externalTaskId).toBe('task-1');
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -36,7 +36,7 @@ describe('a transient provider failure', () => {
       .mockResolvedValueOnce(json(200, created));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(kieImageProvider.createTask({ prompt: 'a forest' })).resolves.toMatchObject({
+    await expect(kieImageProvider.createTask({ prompt: 'a forest', apiKey: 'test-kie-key' })).resolves.toMatchObject({
       externalTaskId: 'task-1',
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -46,7 +46,7 @@ describe('a transient provider failure', () => {
     const fetchMock = vi.fn().mockResolvedValue(json(500, { msg: 'still broken' }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(kieImageProvider.createTask({ prompt: 'a forest' })).rejects.toMatchObject({
+    await expect(kieImageProvider.createTask({ prompt: 'a forest', apiKey: 'test-kie-key' })).rejects.toMatchObject({
       code: 'KIE_UNAVAILABLE',
     });
 
@@ -63,7 +63,7 @@ describe('a failure the provider did act on', () => {
     const fetchMock = vi.fn().mockResolvedValue(json(400, { msg: 'bad prompt' }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(kieImageProvider.createTask({ prompt: 'x' })).rejects.toMatchObject({
+    await expect(kieImageProvider.createTask({ prompt: 'x', apiKey: 'test-kie-key' })).rejects.toMatchObject({
       code: 'KIE_BAD_REQUEST',
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -73,7 +73,7 @@ describe('a failure the provider did act on', () => {
     const fetchMock = vi.fn().mockResolvedValue(json(402, { msg: 'no credit' }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(kieImageProvider.createTask({ prompt: 'x' })).rejects.toMatchObject({
+    await expect(kieImageProvider.createTask({ prompt: 'x', apiKey: 'test-kie-key' })).rejects.toMatchObject({
       code: 'KIE_PROVIDER_CREDIT',
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -90,7 +90,7 @@ describe('a request the provider refuses', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(kieImageProvider.createTask({ prompt: 'x'.repeat(2000) })).rejects.toMatchObject({
+    await expect(kieImageProvider.createTask({ prompt: 'x'.repeat(2000), apiKey: 'test-kie-key' })).rejects.toMatchObject({
       code: 'KIE_REJECTED',
       message: 'The text length cannot exceed the maximum limit',
       retryable: false,

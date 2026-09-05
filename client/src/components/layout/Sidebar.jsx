@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
-import { BookOpen, LogOut, PanelLeft } from 'lucide-react';
+import { LogOut, PanelLeft, X } from 'lucide-react';
 import { cn } from '../../lib/cn.js';
+import { useIsDesktop } from '../../lib/useMediaQuery.js';
 import { useUiStore } from '../../store/uiStore.js';
 import { useAuthStore } from '../../store/authStore.js';
 import { Avatar } from '../common/Avatar.jsx';
@@ -59,7 +60,7 @@ function UnbuiltRow({ item, collapsed, height, indented }) {
  * come from the caller; what is shared is that a built destination is a link and
  * an unbuilt one is inert.
  */
-function FooterCard({ item, className, children }) {
+function FooterCard({ item, className, children, onNavigate }) {
   if (item.arrives) {
     return (
       <span
@@ -73,13 +74,17 @@ function FooterCard({ item, className, children }) {
   }
 
   return (
-    <NavLink to={item.path} className={cn(className, 'text-ink hover:bg-surface-hover')}>
+    <NavLink
+      to={item.path}
+      onClick={onNavigate}
+      className={cn(className, 'text-ink hover:bg-surface-hover')}
+    >
       {children}
     </NavLink>
   );
 }
 
-function NavRow({ item, collapsed, height = 'h-[37px]' }) {
+function NavRow({ item, collapsed, height = 'h-[37px]', onNavigate }) {
   const Icon = item.icon;
 
   if (item.arrives) return <UnbuiltRow item={item} collapsed={collapsed} height={height} />;
@@ -89,6 +94,7 @@ function NavRow({ item, collapsed, height = 'h-[37px]' }) {
       <NavLink
         to={item.path}
         end={item.path === '/'}
+        onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         className={({ isActive }) =>
           cn(
@@ -112,13 +118,19 @@ function NavRow({ item, collapsed, height = 'h-[37px]' }) {
 }
 
 export function Sidebar() {
-  const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const collapsedPref = useUiStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+  const mobileNavOpen = useUiStore((s) => s.mobileNavOpen);
+  const closeMobileNav = useUiStore((s) => s.closeMobileNav);
+  const isDesktop = useIsDesktop();
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
 
   const NotificationsIcon = SIDEBAR_FOOTER.notifications.icon;
+  const SettingsIcon = SIDEBAR_FOOTER.settings.icon;
 
+  // Collapse is a desktop-only affordance; on mobile the drawer is always full.
+  const collapsed = isDesktop && collapsedPref;
   const gutter = collapsed ? 'px-3' : 'pl-2.5 pr-4';
 
   return (
@@ -126,28 +138,31 @@ export function Sidebar() {
       aria-label="Main navigation"
       className={cn(
         'surface-sidebar flex h-full shrink-0 flex-col border-r border-hairline',
-        'transition-[width] duration-150',
-        collapsed ? 'w-[72px]' : 'w-sidebar',
+        // Desktop: a static column that animates its width when collapsed.
+        'lg:static lg:z-auto lg:translate-x-0 lg:transition-[width]',
+        collapsed ? 'lg:w-[72px]' : 'lg:w-sidebar',
+        // Mobile: an off-canvas drawer sliding in over the content.
+        'fixed inset-y-0 left-0 z-50 w-sidebar transition-transform duration-200',
+        mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       )}
     >
-      {/* Brand row occupies y14–48. `mt` not `pt`: padding inside a fixed height
-          would shrink the content box and pull everything below it upward. */}
+      {/* Brand row. `mt` not `pt`: padding inside a fixed height would shrink the
+          content box and pull everything below it upward. Tall enough to hold the
+          4rem brand lockup without cramping it against the top edge. */}
       <div
         className={cn(
-          'mt-[14px] flex h-[34px] shrink-0 items-center',
+          'mt-[14px] flex h-16 shrink-0 items-center',
           collapsed ? 'justify-center' : 'justify-between pl-[18px] pr-4',
         )}
       >
         {!collapsed && (
-          <div className="flex items-center gap-3">
-            <BookOpen className="h-6 w-6 shrink-0 text-gold" aria-hidden="true" />
-            <span className="text-xl font-bold text-ink">StoryBook Studio</span>
-          </div>
+          <img src="/logo.png" alt="StoryBook Studio" className="-ml-[6px] h-16 w-auto shrink-0" />
         )}
+        {/* Desktop: collapse the column. Mobile: close the drawer. */}
         <IconButton
-          icon={PanelLeft}
-          label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          onClick={toggleSidebar}
+          icon={isDesktop ? PanelLeft : X}
+          label={isDesktop ? (collapsed ? 'Expand sidebar' : 'Collapse sidebar') : 'Close menu'}
+          onClick={isDesktop ? toggleSidebar : closeMobileNav}
           className="rounded-lg"
         />
       </div>
@@ -156,7 +171,7 @@ export function Sidebar() {
       <div className={cn('mt-[30px] min-h-0 flex-1 overflow-y-auto', gutter)}>
         <ul>
           {PRIMARY_NAV.map((item) => (
-            <NavRow key={item.key} item={item} collapsed={collapsed} />
+            <NavRow key={item.key} item={item} collapsed={collapsed} onNavigate={closeMobileNav} />
           ))}
         </ul>
 
@@ -171,6 +186,7 @@ export function Sidebar() {
       <div className={cn('shrink-0 space-y-2 pb-4 pt-3', gutter)}>
         <FooterCard
           item={SIDEBAR_FOOTER.notifications}
+          onNavigate={closeMobileNav}
           className={cn(
             'flex h-11 items-center rounded-lg border border-hairline bg-surface text-base',
             collapsed ? 'justify-center' : 'pl-2.5',
@@ -178,6 +194,18 @@ export function Sidebar() {
         >
           <NotificationsIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
           {!collapsed && <span className="ml-[15px]">{SIDEBAR_FOOTER.notifications.label}</span>}
+        </FooterCard>
+
+        <FooterCard
+          item={SIDEBAR_FOOTER.settings}
+          onNavigate={closeMobileNav}
+          className={cn(
+            'flex h-11 items-center rounded-lg border border-hairline bg-surface text-base',
+            collapsed ? 'justify-center' : 'pl-2.5',
+          )}
+        >
+          <SettingsIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {!collapsed && <span className="ml-[15px]">{SIDEBAR_FOOTER.settings.label}</span>}
         </FooterCard>
 
         <div

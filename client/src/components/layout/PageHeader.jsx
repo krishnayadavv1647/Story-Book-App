@@ -9,7 +9,12 @@ import { cn } from '../../lib/cn.js';
  */
 export function PageHeader({ backTo, backLabel, title, subtitle, actions, className }) {
   return (
-    <div className={cn('flex items-start justify-between gap-6', className)}>
+    <div
+      className={cn(
+        'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6',
+        className,
+      )}
+    >
       <div className="min-w-0">
         {backTo && (
           <Link
@@ -21,11 +26,15 @@ export function PageHeader({ backTo, backLabel, title, subtitle, actions, classN
           </Link>
         )}
 
-        <h1 className={cn('text-3xl font-bold text-ink', backTo && 'mt-[18px]')}>{title}</h1>
+        <h1 className={cn('text-2xl font-bold text-ink sm:text-3xl', backTo && 'mt-[18px]')}>
+          {title}
+        </h1>
         {subtitle && <p className="mt-2 text-base text-ink-muted">{subtitle}</p>}
       </div>
 
-      {actions && <div className="flex shrink-0 items-center gap-4 pt-8">{actions}</div>}
+      {actions && (
+        <div className="flex shrink-0 flex-wrap items-center gap-3 sm:gap-4 sm:pt-8">{actions}</div>
+      )}
     </div>
   );
 }

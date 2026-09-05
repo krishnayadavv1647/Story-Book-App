@@ -23,7 +23,7 @@ export function DashboardHero({ onCreate, className }) {
       className={cn(
         // The background colour matters: it is what shows if the image is slow
         // or missing, and the text must be readable against it either way.
-        'relative flex h-[362px] items-center overflow-hidden rounded-2xl bg-page-deep',
+        'relative flex h-[240px] items-center overflow-hidden rounded-2xl bg-page-deep sm:h-[362px]',
         // A gold edge, the same colour as the Create Book button it frames, so
         // the banner reads as one lit object rather than a photo that stops.
         'border-1 border-gold-border',
@@ -44,8 +44,8 @@ export function DashboardHero({ onCreate, className }) {
         className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-transparent"
       />
 
-      <div className="relative z-10 pl-[42px] pr-6">
-        <h1 className="text-display font-bold text-ink">
+      <div className="relative z-10 px-6 sm:pl-[42px] sm:pr-6">
+        <h1 className="text-4xl font-bold text-ink sm:text-display">
           STORYBOOK
           <span className="block font-normal">STUDIO</span>
         </h1>

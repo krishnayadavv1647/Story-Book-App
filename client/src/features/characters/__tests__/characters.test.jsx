@@ -388,7 +388,7 @@ describe('illustrating a character', () => {
     await waitFor(() => expect(screen.getByLabelText('Character Name')).toHaveValue('Aarav'));
     await userEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/not configured/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/API key in Settings/i);
   });
 });
 

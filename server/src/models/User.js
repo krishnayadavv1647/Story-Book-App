@@ -47,6 +47,15 @@ const userSchema = new mongoose.Schema(
       expiresAt: { type: Date, default: null, select: false },
       requestedAt: { type: Date, default: null, select: false },
     },
+
+    // The user's own provider API keys (BYOK), each stored ENCRYPTED (a
+    // `secretBox` envelope), never plaintext. `select: false` per leaf so a hash
+    // must be asked for explicitly, and `toJSON` strips the whole subdoc — the
+    // client only ever learns whether a key is set, never its value.
+    apiKeys: {
+      gemini: { type: String, default: null, select: false },
+      kie: { type: String, default: null, select: false },
+    },
   },
   {
     timestamps: true,
@@ -54,6 +63,7 @@ const userSchema = new mongoose.Schema(
       virtuals: true,
       transform(_doc, ret) {
         delete ret.passwordHash;
+        delete ret.apiKeys;
         delete ret.__v;
         return ret;
       },

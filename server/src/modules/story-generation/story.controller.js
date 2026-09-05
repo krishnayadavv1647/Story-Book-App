@@ -2,6 +2,7 @@ import { asyncHandler } from '../../utils/asyncHandler.js';
 import { sendSuccess } from '../../utils/apiResponse.js';
 import { env } from '../../config/env.js';
 import * as storyService from './story.service.js';
+import { getUserApiKeys } from '../users/users.service.js';
 
 /**
  * Aborts the upstream provider call when the browser goes away.
@@ -77,23 +78,24 @@ export const cancel = asyncHandler(async (req, res) => {
  * Whether each engine is usable, so the agent screen's status meters report
  * something real instead of decoration.
  *
- * Reports booleans and model names only — never a key, and never a base URL,
- * which can carry an account identifier.
+ * BYOK: "configured" means THIS user has set that provider's key — never the
+ * server env. Reports booleans and model names only, never a key.
  */
-export const engines = asyncHandler(async (_req, res) =>
-  sendSuccess(res, {
+export const engines = asyncHandler(async (req, res) => {
+  const keys = await getUserApiKeys(req.user._id);
+  return sendSuccess(res, {
     data: {
       writer: {
-        configured: Boolean(env.GEMINI_API_KEY),
-        model: env.GEMINI_API_KEY ? env.GEMINI_MODEL : null,
+        configured: Boolean(keys.gemini),
+        model: keys.gemini ? env.GEMINI_MODEL : null,
       },
       image: {
-        configured: Boolean(env.KIE_API_KEY && env.KIE_BASE_URL && env.KIE_IMAGE_MODEL),
-        model: env.KIE_API_KEY ? env.KIE_IMAGE_MODEL || null : null,
+        configured: Boolean(keys.kie && env.KIE_BASE_URL && env.KIE_IMAGE_MODEL),
+        model: keys.kie ? env.KIE_IMAGE_MODEL || null : null,
       },
     },
     message: 'Engine status',
-  }),
-);
+  });
+});
 
 export default { generatePlan, regenerate, chat, cancel, engines };

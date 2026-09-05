@@ -88,8 +88,15 @@ function describe(err) {
     if (err.code === 'STORY_PLAN_INVALID') {
       return 'The planner could not produce a usable plan. Try rewording the idea.';
     }
-    if (err.code === 'GEMINI_NOT_CONFIGURED') {
-      return 'Story generation is not configured on this server yet.';
+    // BYOK: the user needs to add their own key in Settings.
+    if (err.code === 'GEMINI_KEY_MISSING' || err.code === 'GEMINI_NOT_CONFIGURED') {
+      return 'Add your Google Gemini API key in Settings to generate stories.';
+    }
+    if (err.code === 'KIE_KEY_MISSING' || err.code === 'KIE_NOT_CONFIGURED') {
+      return 'Add your Kie.ai API key in Settings to generate illustrations.';
+    }
+    if (err.code === 'GEMINI_UNAUTHORIZED' || err.code === 'KIE_UNAUTHORIZED') {
+      return 'Your API key was rejected. Check it in Settings.';
     }
     if (err.code === 'JOB_IN_PROGRESS') return 'That story is already being planned.';
     return err.message;

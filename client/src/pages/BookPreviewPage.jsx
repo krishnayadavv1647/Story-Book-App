@@ -69,7 +69,7 @@ export function BookPreviewPage() {
   const safeFraction = Math.min(0.2, Math.max(0.01, (printCfg.safeMarginIn ?? 0.25) / widthIn));
 
   return (
-    <AppShell contentClassName="flex min-h-0 flex-col overflow-hidden">
+    <AppShell contentClassName="flex min-h-0 flex-col overflow-y-auto lg:overflow-hidden">
       <div className="flex shrink-0 items-center gap-4">
         <button
           type="button"
@@ -80,9 +80,11 @@ export function BookPreviewPage() {
         </button>
       </div>
 
-      <div className="mt-2 flex shrink-0 items-start gap-4">
+      <div className="mt-2 flex shrink-0 flex-col gap-3 lg:flex-row lg:items-start lg:gap-4">
         <div className="min-w-0">
-          <h1 className="truncate text-3xl font-bold text-ink">Preview &amp; Export Your Book</h1>
+          <h1 className="truncate text-2xl font-bold text-ink lg:text-3xl">
+            Preview &amp; Export Your Book
+          </h1>
           <p className="mt-1 text-sm text-ink-muted">
             Review every page and choose how you want to publish.
           </p>
@@ -92,7 +94,7 @@ export function BookPreviewPage() {
           {readiness?.ready ? 'Ready to export' : 'Not finished'} · {preview.pages.length} pages
         </StatusBadge>
 
-        <div className="ml-auto flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3 lg:ml-auto">
           <Button
             size="xl"
             leadingIcon={ExternalLink}
@@ -149,7 +151,8 @@ export function BookPreviewPage() {
         </Callout>
       )}
 
-      <div className="mt-5 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] grid-cols-[minmax(0,1008fr)_minmax(0,442fr)] gap-5">
+      <div className="mt-5 grid gap-5 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1008fr)_minmax(0,442fr)]">
+        <div className="h-[70vh] min-h-0 lg:h-auto">
         <BookPreview
           pages={preview.pages}
           view={view}
@@ -162,7 +165,9 @@ export function BookPreviewPage() {
           onBleedChange={setBleed}
           safeFraction={safeFraction}
         />
+        </div>
 
+        <div className="h-[70vh] min-h-0 lg:h-auto">
         <ExportPanel
           settings={preview.settings}
           onChange={preview.update}
@@ -183,6 +188,7 @@ export function BookPreviewPage() {
           onPreparePrint={() => preview.preparePrint.mutate()}
           preparingPrint={preview.preparePrint.isPending}
         />
+        </div>
       </div>
 
       <StickyActionBar

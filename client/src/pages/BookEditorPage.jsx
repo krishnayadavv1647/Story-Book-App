@@ -95,7 +95,7 @@ export function BookEditorPage() {
   };
 
   return (
-    <AppShell contentClassName="flex min-h-0 flex-col overflow-hidden">
+    <AppShell contentClassName="flex min-h-0 flex-col overflow-y-auto lg:overflow-hidden">
       <input
         ref={fileInput}
         type="file"
@@ -116,10 +116,10 @@ export function BookEditorPage() {
         </button>
       </div>
 
-      <div className="mt-2 flex shrink-0 items-center gap-4">
+      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-3 lg:gap-4">
         {titleDraft === null ? (
           <>
-            <h1 className="truncate text-3xl font-bold text-ink">
+            <h1 className="truncate text-2xl font-bold text-ink lg:text-3xl">
               {editor.book?.title || 'Untitled book'}
             </h1>
             <button
@@ -151,7 +151,7 @@ export function BookEditorPage() {
           {SAVE_LABEL[editor.saveState]}
         </StatusBadge>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
           <Button
             size="xl"
             leadingIcon={Eye}
@@ -192,7 +192,8 @@ export function BookEditorPage() {
       {/* `fr` tracks are min-content sized by default, which pushed the inspector
           off screen and let the pages rail overflow its row. minmax(0, …) on both
           axes is what lets each panel shrink and scroll inside itself. */}
-      <div className="mt-5 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] grid-cols-[minmax(0,287fr)_minmax(0,732fr)_minmax(0,428fr)] gap-5">
+      <div className="mt-5 grid gap-5 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[minmax(0,287fr)_minmax(0,732fr)_minmax(0,428fr)]">
+        <div className="h-[32vh] min-h-0 lg:h-auto">
         <PagesPanel
           pages={editor.pages}
           selectedId={editor.selectedId}
@@ -205,7 +206,9 @@ export function BookEditorPage() {
           onToggleManage={() => setManageOpen((open) => !open)}
           busy={editor.addPage.isPending || editor.reorderPages.isPending}
         />
+        </div>
 
+        <div className="h-[70vh] min-h-0 lg:h-auto">
         <PageCanvas
           page={page}
           zoom={zoom}
@@ -223,7 +226,9 @@ export function BookEditorPage() {
           regenerating={editor.regenerateImage.isPending}
           arranging={editor.magicLayout.isPending}
         />
+        </div>
 
+        <div className="h-[70vh] min-h-0 lg:h-auto">
         <InspectorPanel
           page={page}
           characters={editor.characters}
@@ -236,6 +241,7 @@ export function BookEditorPage() {
           uploading={uploading || editor.setArtwork.isPending}
           generating={editor.regenerateImage.isPending}
         />
+        </div>
       </div>
 
       <Modal

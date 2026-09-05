@@ -29,13 +29,15 @@ const STATUS_TONE = {
   archived: { tone: 'neutral', label: 'Archived' },
 };
 
-export function BookCard({ book, className }) {
+export function BookCard({ book, className, to }) {
   const status = STATUS_TONE[book.status] ?? STATUS_TONE.draft;
   const pages = book.pageCount ?? 0;
 
   return (
     <BookCover
-      to={`/books/${book.id ?? book._id}`}
+      // Defaults to the book itself; a caller can override where the card leads
+      // (the dashboard sends every card to the My Books library).
+      to={to ?? `/books/${book.id ?? book._id}`}
       imageUrl={book.coverUrl}
       // Only a cover the server drew as a cover has the title inside it. A page
       // illustration standing in says nothing, so the card sets the title over

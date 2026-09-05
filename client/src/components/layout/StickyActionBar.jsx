@@ -12,7 +12,8 @@ export function StickyActionBar({ status, statusTone = 'saved', step, actions, c
   return (
     <div
       className={cn(
-        'flex h-[72px] items-center rounded-lg border border-hairline bg-surface px-[22px]',
+        'flex min-h-[72px] flex-wrap items-center gap-y-2 rounded-lg border border-hairline bg-surface px-4 py-3',
+        'sm:flex-nowrap sm:px-[22px] sm:py-0',
         sticky && 'sticky bottom-0 z-10',
         className,
       )}

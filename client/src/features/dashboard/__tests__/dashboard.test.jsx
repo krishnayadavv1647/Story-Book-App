@@ -119,8 +119,10 @@ describe('dashboard', () => {
     expect(heading).toBeInTheDocument();
     expect(await screen.findByText('2')).toBeInTheDocument();
 
+    // On the dashboard every book card leads to the My Books library, not
+    // straight into the book.
     const ready = await screen.findByRole('link', { name: /aarav and the whispering forest/i });
-    expect(ready).toHaveAttribute('href', '/books/b1');
+    expect(ready).toHaveAttribute('href', '/books');
     expect(within(ready).getByText('10 pages • Magical Adventure')).toBeInTheDocument();
   });
 

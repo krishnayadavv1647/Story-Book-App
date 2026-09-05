@@ -8,6 +8,7 @@ import { geminiStoryProvider } from '../../providers/gemini/GeminiStoryProvider.
 import { STORY_PLAN_PROMPT } from '../../providers/gemini/prompts.js';
 import { STORY_PLAN_JSON_SCHEMA } from '../../providers/gemini/storyPlan.schema.js';
 import { screenPlan, screenPrompt } from './moderation.js';
+import { requireUserApiKey } from '../users/users.service.js';
 
 /**
  * Records the prompt template that produced a job, so a regression can be traced
@@ -190,6 +191,9 @@ async function persistPlan({ ownerId, plan, sourcePrompt, promptVersionId, job, 
 export async function generateStoryPlan({ user, prompt, settings = {}, requestId, signal }) {
   const ownerId = user._id;
 
+  // BYOK: fail before any screening/credit/job work if the user has no key.
+  const apiKey = await requireUserApiKey(ownerId, 'gemini');
+
   const screening = await screenPrompt({ ownerId, prompt, requestId });
   if (!screening.allowed) {
     throw ApiError.badRequest(
@@ -240,7 +244,12 @@ export async function generateStoryPlan({ user, prompt, settings = {}, requestId
   );
 
   try {
-    const { plan, meta } = await geminiStoryProvider.generateStoryPlan({ prompt, settings, signal });
+    const { plan, meta } = await geminiStoryProvider.generateStoryPlan({
+      prompt,
+      settings,
+      signal,
+      apiKey,
+    });
 
     const planScreening = await screenPlan({ ownerId, plan, requestId });
     if (!planScreening.allowed) {
@@ -331,6 +340,9 @@ export async function regeneratePlan({ user, book, requestId, signal }) {
     });
   }
 
+  // BYOK: the user's own Gemini key drives the regeneration.
+  const apiKey = await requireUserApiKey(user._id, 'gemini');
+
   const settings = {
     ageGroup: book.ageGroup,
     language: book.language,
@@ -374,7 +386,7 @@ export async function regeneratePlan({ user, book, requestId, signal }) {
     }));
 
   try {
-    const { plan } = await geminiStoryProvider.generateStoryPlan({ prompt, settings, signal });
+    const { plan } = await geminiStoryProvider.generateStoryPlan({ prompt, settings, signal, apiKey });
 
     const screening = await screenPlan({ ownerId: user._id, plan, requestId });
     if (!screening.allowed) {
@@ -436,14 +448,32 @@ async function replacePlan({ book, plan, promptVersionId }) {
 
     const byTempId = new Map(characters.map((character) => [character.tempId, character._id]));
 
+    const storyPages = plan.pages.slice().sort((a, b) => a.pageNumber - b.pageNumber);
+
+    // A regenerated book keeps the same structure as a freshly planned one:
+    // title · story×N · ending. Regenerating rewrites the story, not the byline,
+    // so the author line comes from the book, not the plan. (Front/back covers
+    // stay the book's own cover flow, not page rows.)
+    const authorLine = book.author ? `Written by ${book.author}` : '';
+
     await BookPage.create(
-      plan.pages
-        .slice()
-        .sort((a, b) => a.pageNumber - b.pageNumber)
-        .map((page) => ({
+      [
+        {
           bookId: book._id,
           ownerId: book.ownerId,
-          order: page.pageNumber,
+          order: 1,
+          type: 'title',
+          title: plan.book.title,
+          narration: authorLine,
+          layout: { preset: 'text-only', backgroundColor: '#FBF7EF' },
+          status: 'ready',
+        },
+        ...storyPages.map((page) => ({
+          bookId: book._id,
+          ownerId: book.ownerId,
+          // Shifted by one to make room for the title page at order 1.
+          order: page.pageNumber + 1,
+          type: 'story',
           title: page.title,
           narration: page.narration,
           dialogue: page.dialogue,
@@ -454,6 +484,17 @@ async function replacePlan({ book, plan, promptVersionId }) {
           characterIds: page.characterIds.map((id) => byTempId.get(id)).filter(Boolean),
           status: 'pending',
         })),
+        {
+          bookId: book._id,
+          ownerId: book.ownerId,
+          order: storyPages.length + 2,
+          type: 'ending',
+          title: 'The End',
+          narration: plan.book.moral ? plan.book.moral : 'The End.',
+          layout: { preset: 'text-only', backgroundColor: '#FBF7EF' },
+          status: 'ready',
+        },
+      ],
       // `ordered: true` is required by Mongoose to create several documents
       // in one session. Without it the whole plan fails to save — and it only
       // shows up on a replica set, because a standalone server has no
@@ -488,6 +529,8 @@ async function replacePlan({ book, plan, promptVersionId }) {
 export async function chat({ user, messages, requestId, signal }) {
   const last = [...messages].reverse().find((message) => message.role === 'user');
 
+  const apiKey = await requireUserApiKey(user._id, 'gemini');
+
   const screening = await screenPrompt({ ownerId: user._id, prompt: last?.content ?? '', requestId });
   if (!screening.allowed) {
     throw ApiError.badRequest('That is not something this assistant can help with.', {
@@ -495,7 +538,7 @@ export async function chat({ user, messages, requestId, signal }) {
     });
   }
 
-  const { text, meta } = await geminiStoryProvider.chat({ messages, signal });
+  const { text, meta } = await geminiStoryProvider.chat({ messages, signal, apiKey });
   return { message: { role: 'assistant', content: text }, meta };
 }
 
@@ -516,7 +559,9 @@ export async function rewritePage({ user, book, pageId, instruction, signal }) {
     });
   }
 
-  const result = await geminiStoryProvider.rewritePage({ book, page, instruction, signal });
+  const apiKey = await requireUserApiKey(user._id, 'gemini');
+
+  const result = await geminiStoryProvider.rewritePage({ book, page, instruction, signal, apiKey });
 
   const screening = await screenPrompt({
     ownerId: user._id,

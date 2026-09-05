@@ -19,10 +19,14 @@ describe('sizing the type to the page', () => {
     expect(size('Mira caught the drop gently.')).toBeGreaterThan(size('x'.repeat(300)));
   });
 
-  it('never goes below the book’s own size', () => {
-    // However much a page has to say, it is still set in the book's face at the
-    // book's size — shrinking it to fit would make one page unreadable.
-    expect(size('x'.repeat(5000))).toBe(Math.round(BASE));
+  it('shrinks a very long page below the book’s size, down to a readable floor', () => {
+    // A page with a great deal to say (a chapter of a teen or adult book) is set
+    // smaller so it still fits, exactly as the exporters do — rather than staying
+    // at the book's size and being clipped. But only down to a floor, never to
+    // nothing, so the page stays readable.
+    const long = size('x'.repeat(5000));
+    expect(long).toBeLessThan(Math.round(BASE));
+    expect(long).toBeGreaterThanOrEqual(Math.round(BASE * 0.45));
   });
 
   it('never becomes a poster', () => {

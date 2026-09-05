@@ -127,7 +127,7 @@ export function CharactersPage() {
       {/* The design is not a 50/50 split: Character Details takes roughly a
           third, the preview and cast the remaining two thirds (Canva
           `DAHT3Z1D79U`, ~476 vs ~960 on a 1792 canvas). */}
-      <div className="mt-6 grid grid-cols-[476fr_960fr] gap-5 pb-6">
+      <div className="mt-6 grid grid-cols-1 gap-5 pb-6 lg:grid-cols-[476fr_960fr]">
         <CharacterDetails
           character={selected}
           locked={locked}

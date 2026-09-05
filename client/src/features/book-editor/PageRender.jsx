@@ -62,14 +62,26 @@ export const PAGE_METRICS = {
  */
 const FILL = 0.78;
 
+/**
+ * How far below the book's body size a very text-heavy page may shrink before it
+ * is clipped instead. A page that has a great deal to say — a chapter of a teen
+ * or adult book runs to a few hundred words — is set smaller so it still fits,
+ * exactly as the PDF and PNG exporters do (they step the size down to fit the
+ * band). Above this floor the arithmetic size already fits the area; the floor
+ * only catches a page so long that nothing would, and keeps it readable. ~0.45
+ * mirrors the exporters' 8pt floor against their 18pt default.
+ */
+const MIN_FILL_RATIO = 0.45;
+
 export function fittedSize({ text, width, height, base }) {
   const chars = Math.max(String(text ?? '').trim().length, 1);
   const perChar = 0.5 * PAGE_METRICS.leading;
 
   const ideal = Math.sqrt((width * height * FILL) / (perChar * chars));
-  // Never smaller than the book's own size, and never so large it stops being
-  // a paragraph and becomes a poster.
-  return Math.round(Math.min(Math.max(ideal, base), base * 2.3));
+  // Big enough that a short page fills the paper, small enough that a long one
+  // fits rather than spilling past the leaf and being clipped — and never so
+  // large it stops being a paragraph and becomes a poster.
+  return Math.round(Math.min(Math.max(ideal, base * MIN_FILL_RATIO), base * 2.3));
 }
 
 const FRAMES = {

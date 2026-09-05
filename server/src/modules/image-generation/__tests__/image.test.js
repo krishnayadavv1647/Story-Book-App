@@ -36,7 +36,13 @@ async function signUp(email = 'krishna@example.com') {
   const res = await request(app)
     .post(`${API_PREFIX}/auth/register`)
     .send({ name: 'Krishna Yadav', email, password: 'a-long-enough-passphrase' });
-  return { token: res.body.data.accessToken, userId: res.body.data.user.id };
+  const token = res.body.data.accessToken;
+  // BYOK: generation uses the user's own keys, so set them for the suite.
+  await request(app)
+    .put(`${API_PREFIX}/users/me/api-keys`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ gemini: 'user-gemini-key', kie: 'user-kie-key' });
+  return { token, userId: res.body.data.user.id };
 }
 
 const asUser = (req, token) => req.set('Authorization', `Bearer ${token}`);

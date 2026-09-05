@@ -15,8 +15,10 @@ if (!globalThis.ResizeObserver) {
 }
 
 if (!globalThis.matchMedia) {
+  // The suite renders at the desktop layout the screens were designed for, so a
+  // `min-width` breakpoint query (e.g. the sidebar's `min-width: 1024px`) matches.
   globalThis.matchMedia = (query) => ({
-    matches: false,
+    matches: /min-width/.test(query),
     media: query,
     onchange: null,
     addListener: () => {},

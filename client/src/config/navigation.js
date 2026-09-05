@@ -1,4 +1,4 @@
-import { Bell, BookMarked, BookOpen, Compass, SquarePen } from 'lucide-react';
+import { Bell, BookMarked, BookOpen, Compass, Settings, SquarePen } from 'lucide-react';
 
 /**
  * The sidebar, measured from Figma `H98QB4Tdo6iH2EaXCerUlv` frame 1:2 and
@@ -78,10 +78,18 @@ export const PRIMARY_NAV = [
  */
 export const SIDEBAR_FOOTER = {
   notifications: { key: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
+  // Account settings — including each user's own API keys (BYOK). Added here
+  // because the app had no way in to `/settings` at all; the route existed but
+  // nothing pointed at it.
+  settings: { key: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
 };
 
 /** Every row the sidebar draws, built or not. */
-export const ALL_NAV_ITEMS = [...PRIMARY_NAV, SIDEBAR_FOOTER.notifications];
+export const ALL_NAV_ITEMS = [
+  ...PRIMARY_NAV,
+  SIDEBAR_FOOTER.notifications,
+  SIDEBAR_FOOTER.settings,
+];
 
 export const ALL_NAV_PATHS = ALL_NAV_ITEMS.map((item) => item.path);
 

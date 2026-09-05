@@ -76,7 +76,7 @@ describe('what callInteractions hands back', () => {
       vi.fn(async () => ok(interaction({ text: '{"book":{"title":"Leo"}}' }))),
     );
 
-    const result = await callInteractions({ input: [userStep('hi')] });
+    const result = await callInteractions({ input: [userStep('hi')], apiKey: 'test-gemini-key' });
 
     expect(result.text).toBe('{"book":{"title":"Leo"}}');
     expect(result.usage).toEqual({ inputTokens: 10, outputTokens: 20, thoughtTokens: 5 });
@@ -94,7 +94,7 @@ describe('asking for structured output', () => {
     const fetchMock = vi.fn(async () => ok(interaction({ text: '{"title":"x"}' })));
     vi.stubGlobal('fetch', fetchMock);
 
-    await callInteractions({ input: [userStep('hi')], responseSchema: schema });
+    await callInteractions({ input: [userStep('hi')], responseSchema: schema, apiKey: 'test-gemini-key' });
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
 
@@ -111,7 +111,7 @@ describe('asking for structured output', () => {
     const fetchMock = vi.fn(async () => ok(interaction({ text: 'hello' })));
     vi.stubGlobal('fetch', fetchMock);
 
-    await callInteractions({ input: [userStep('hi')] });
+    await callInteractions({ input: [userStep('hi')], apiKey: 'test-gemini-key' });
 
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).not.toHaveProperty('response_format');
   });
@@ -121,7 +121,7 @@ describe('a truncated answer', () => {
   it('says the model ran out of room rather than failing as malformed', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ok(interaction({ status: 'incomplete' }))));
 
-    await expect(callInteractions({ input: [userStep('hi')] })).rejects.toMatchObject({
+    await expect(callInteractions({ input: [userStep('hi')], apiKey: 'test-gemini-key' })).rejects.toMatchObject({
       code: 'GEMINI_INCOMPLETE',
     });
   });
@@ -132,7 +132,7 @@ describe('a truncated answer', () => {
       vi.fn(async () => ok(interaction({ status: 'incomplete', text: '{"title":"x"}' }))),
     );
 
-    const result = await callInteractions({ input: [userStep('hi')] });
+    const result = await callInteractions({ input: [userStep('hi')], apiKey: 'test-gemini-key' });
     expect(result.text).toBe('{"title":"x"}');
   });
 });

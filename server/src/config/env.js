@@ -112,6 +112,12 @@ const schema = z.object({
   COOKIE_SECURE: bool(isProd),
   BCRYPT_ROUNDS: int(12),
 
+  // Encrypts users' own provider API keys (BYOK) at rest. A dedicated secret so
+  // rotating it only invalidates stored keys (users re-enter them), nothing
+  // else. Required in production; in dev/test it falls back to COOKIE_SECRET via
+  // `secretBox` so the suite boots without extra config.
+  APIKEY_ENC_SECRET: secret(32),
+
   // Sign in with Google — server-side Authorization Code flow. All three live
   // here, on the server, and never in the client:
   //   · GOOGLE_CLIENT_ID     — the OAuth client id (public).
@@ -144,7 +150,11 @@ const schema = z.object({
     .string()
     .optional()
     .transform((v) => (v === undefined || v === '' ? 0.8 : Number(v))),
-  GEMINI_MAX_OUTPUT_TOKENS: int(8192),
+  // A whole book plan (metadata + cast + every page) comes back in one JSON
+  // response, so richer per-page narration needs real headroom or the JSON is
+  // truncated and fails to parse. This is a ceiling billed by actual usage, so
+  // raising it costs nothing until the output genuinely needs the room.
+  GEMINI_MAX_OUTPUT_TOKENS: int(32768),
 
   KIE_API_KEY: str(''),
   KIE_BASE_URL: str('https://api.kie.ai'),
@@ -206,6 +216,7 @@ export const SERVER_ONLY_SECRET_KEYS = Object.freeze([
   'JWT_ACCESS_SECRET',
   'JWT_REFRESH_SECRET',
   'COOKIE_SECRET',
+  'APIKEY_ENC_SECRET',
   'MONGODB_URI',
   'GEMINI_API_KEY',
   'KIE_API_KEY',

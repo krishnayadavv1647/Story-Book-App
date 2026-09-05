@@ -15,7 +15,7 @@ export function PlanSummary({ book, pages, characters, estimate }) {
           <div className="mt-4 flex flex-col items-center">
             {/* Placeholder cover until one is generated — the frame draws a flat
               green panel carrying the title. */}
-            <div className="flex aspect-[300/244] w-[300px] items-start justify-start rounded-xl bg-cover-placeholder p-6">
+            <div className="flex aspect-[300/244] w-full max-w-[300px] items-start justify-start rounded-xl bg-cover-placeholder p-6">
               <p className="text-3xl font-bold leading-tight text-cover-glyph">{book.title}</p>
             </div>
 

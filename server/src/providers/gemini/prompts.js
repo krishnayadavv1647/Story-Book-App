@@ -49,18 +49,23 @@ Craft rules:
   build, skin tone, hair, eyes, distinguishing features and default outfit. It must
   read as a description, not a sentence about the plot.
 - Vary the locations and the beats. Do not restate the same image with new words.
-- Give each page enough narration to carry its own weight. A single line under a
-  full-page illustration reads as an unfinished page, and the reader turns it in
-  a second. Aim, per page, for roughly:
-    0-3   15-35 words     3-5   30-60 words     6-9   60-110 words
-    9-12  90-160 words    13-17 140-220 words   18+   180-280 words
-  These are targets, not quotas — a deliberate one-line beat is fine when the
-  page is doing that on purpose. What is not fine is every page being thin.
+- Give each page enough narration to carry its own weight, and err on the FULL
+  side: a single line under a full-page illustration reads as an unfinished page,
+  and the reader turns it in a second. Write substantial prose on every page.
+  Aim, per page, for roughly:
+    0-3   25-45 words     3-5   50-90 words     6-9   110-170 words
+    9-12  150-220 words   13-17 200-300 words   18+   250-360 words
+  Prefer the upper end of the band — a fuller page is better than a thin one. For
+  6-9 and older this usually means two or more paragraphs per page: advance the
+  action, then add a beat of sensory detail, dialogue or interior thought so the
+  page rewards a slow read. These are targets, not quotas — a deliberate one-line
+  beat is fine when the page is doing that on purpose — but the default is rich,
+  and every page being thin is a failure.
 `.trim();
 
 export const STORY_PLAN_PROMPT = Object.freeze({
   key: 'story-plan',
-  version: 2,
+  version: 3,
   systemInstruction: `
 You are the story planner for StoryBook Studio, which turns an idea into an
 illustrated book for the audience the user chooses — anything from a young

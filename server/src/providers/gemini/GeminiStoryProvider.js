@@ -67,7 +67,7 @@ export class GeminiStoryProvider {
   /**
    * Returns a validated plan, or throws. Never returns a partial or unchecked one.
    */
-  async generateStoryPlan({ prompt, settings = {}, signal } = {}) {
+  async generateStoryPlan({ prompt, settings = {}, signal, apiKey } = {}) {
     const input = [userStep(STORY_PLAN_PROMPT.buildInput({ prompt, settings }))];
 
     const usage = { inputTokens: 0, outputTokens: 0, thoughtTokens: 0 };
@@ -80,6 +80,7 @@ export class GeminiStoryProvider {
         systemInstruction: STORY_PLAN_PROMPT.systemInstruction,
         responseSchema: STORY_PLAN_JSON_SCHEMA,
         signal,
+        apiKey,
       });
 
       usage.inputTokens += response.usage.inputTokens;
@@ -132,12 +133,13 @@ export class GeminiStoryProvider {
    * Rewrites one page. Returns validated text or throws — a rewrite that came
    * back empty or malformed must never overwrite what the user already had.
    */
-  async rewritePage({ book, page, instruction, signal } = {}) {
+  async rewritePage({ book, page, instruction, signal, apiKey } = {}) {
     const response = await callInteractions({
       input: [userStep(PAGE_REWRITE_PROMPT.buildInput({ book, page, instruction }))],
       systemInstruction: PAGE_REWRITE_PROMPT.systemInstruction,
       responseSchema: PAGE_REWRITE_JSON_SCHEMA,
       signal,
+      apiKey,
     });
 
     let parsed;
@@ -166,7 +168,7 @@ export class GeminiStoryProvider {
    * stateless by choice — the transcript lives in our database, not the
    * provider's.
    */
-  async chat({ messages = [], signal } = {}) {
+  async chat({ messages = [], signal, apiKey } = {}) {
     const input = messages.map((message) =>
       message.role === 'assistant' ? modelStep(message.content) : userStep(message.content),
     );
@@ -175,6 +177,7 @@ export class GeminiStoryProvider {
       input,
       systemInstruction: STORY_CHAT_PROMPT.systemInstruction,
       signal,
+      apiKey,
     });
 
     return {

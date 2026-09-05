@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 
 import { AppShell } from '../components/layout/index.js';
@@ -142,12 +142,27 @@ export function StoryAgentPage() {
         </Callout>
       )}
 
-      {/* Only warn on a definite "not configured" — an unexpected or partial
-          payload must not take the whole screen down. */}
-      {engines.data?.writer?.configured === false && (
+      {/* Only prompt on a definite "not configured" — an unexpected or partial
+          payload must not take the whole screen down. Both engines run on the
+          user's OWN keys (BYOK), so this is an actionable link to add them, not
+          a dead-end warning. */}
+      {(engines.data?.writer?.configured === false ||
+        engines.data?.image?.configured === false) && (
         <Callout tone="warning" className="mb-3">
-          Story generation is not configured on this server, so planning will fail until a Gemini
-          key is set.
+          <span className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <span>
+              {engines.data?.writer?.configured === false &&
+              engines.data?.image?.configured === false
+                ? 'Add your Gemini and Kie.ai API keys to generate a book.'
+                : engines.data?.writer?.configured === false
+                  ? 'Add your Google Gemini API key to write stories.'
+                  : 'Add your Kie.ai API key to generate illustrations.'}{' '}
+              Books are made with your own keys.
+            </span>
+            <Link to="/settings" className="font-semibold text-ink underline hover:no-underline">
+              Add key in Settings →
+            </Link>
+          </span>
         </Callout>
       )}
     </>

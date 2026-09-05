@@ -1,39 +1,38 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Whether a CSS media query currently matches.
+ * Subscribes to a CSS media query and returns whether it currently matches.
  *
- * Used where a layout is a different *shape* rather than a different size — a
- * book opens to two pages on a desktop and one on a phone, and that is a
- * decision about how many pages exist on screen, not something a breakpoint
- * class can express.
+ * Used for the handful of places where layout has to branch in JavaScript rather
+ * than in CSS — chiefly the sidebar, which is a static column on desktop but an
+ * off-canvas drawer on small screens, a difference that changes what is rendered,
+ * not just how it is styled. SSR-safe: returns `false` until mounted.
  */
-export function useMediaQuery(query) {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia
-      ? window.matchMedia(query).matches
-      : false,
-  );
+export function useMediaQuery(query, defaultValue = false) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return defaultValue;
+    return window.matchMedia(query).matches;
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
-
-    const list = window.matchMedia(query);
-    const onChange = (event) => setMatches(event.matches);
-
-    setMatches(list.matches);
-    // `addEventListener` on a MediaQueryList is the modern spelling; Safari
-    // before 14 only has `addListener`.
-    if (list.addEventListener) list.addEventListener('change', onChange);
-    else list.addListener(onChange);
-
-    return () => {
-      if (list.removeEventListener) list.removeEventListener('change', onChange);
-      else list.removeListener(onChange);
-    };
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
   }, [query]);
 
   return matches;
+}
+
+/**
+ * True at Tailwind's `lg` breakpoint and up (≥1024px) — i.e. "desktop".
+ * Defaults to desktop where `matchMedia` is unavailable (SSR, jsdom tests),
+ * which matches the app's original desktop-only assumption.
+ */
+export function useIsDesktop() {
+  return useMediaQuery('(min-width: 1024px)', true);
 }
 
 export default useMediaQuery;

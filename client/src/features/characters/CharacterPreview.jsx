@@ -24,7 +24,7 @@ export function CharacterPreview({ character, generating, progress, previewUrl, 
         </p>
       )}
 
-      <div className="mt-4 grid grid-cols-4 gap-3">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {POSES.map((pose, index) => {
           // Poses are matched by name, not by array position — a character may
           // have a side view but no front one. The freshly finished image shows

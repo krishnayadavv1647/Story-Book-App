@@ -3,7 +3,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { authLimiter } from '../../middleware/rateLimit.js';
 import * as controller from './users.controller.js';
-import { changePasswordSchema, updateProfileSchema } from './users.validators.js';
+import { apiKeysSchema, changePasswordSchema, updateProfileSchema } from './users.validators.js';
 
 const router = Router();
 
@@ -18,6 +18,15 @@ router.post(
   authLimiter,
   validate({ body: changePasswordSchema }),
   controller.changePassword,
+);
+
+// BYOK: set or clear the user's own provider API keys. Rate-limited like the
+// other credential routes — it accepts secrets.
+router.put(
+  '/me/api-keys',
+  authLimiter,
+  validate({ body: apiKeysSchema }),
+  controller.setApiKeys,
 );
 
 export default router;

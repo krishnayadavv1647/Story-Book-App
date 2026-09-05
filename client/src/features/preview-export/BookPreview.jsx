@@ -121,7 +121,7 @@ export function BookPreview({
   return (
     <div className="flex h-full min-h-0 flex-col rounded-lg border border-hairline bg-page p-4">
       <div className="flex shrink-0 justify-center">
-        <div className="w-[420px]">
+        <div className="w-full max-w-[420px]">
           <SegmentedTabs
             value={view}
             onValueChange={onViewChange}

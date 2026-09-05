@@ -89,7 +89,7 @@ export function BookInformation({ book, onSaveField }) {
     <Card>
       <CardHeader title="Book Information" />
 
-      <div className="mt-4 grid grid-cols-[460fr_526fr] gap-x-5 gap-y-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[460fr_526fr] sm:gap-x-5 sm:gap-y-4">
         <TextField label="Title" value={book.title} onSave={(v) => onSaveField('title', v)} />
         <TextField
           label="Subtitle"

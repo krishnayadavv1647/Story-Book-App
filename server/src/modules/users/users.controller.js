@@ -3,7 +3,7 @@ import { sendSuccess } from '../../utils/apiResponse.js';
 import * as service from './users.service.js';
 
 export const me = asyncHandler(async (req, res) =>
-  sendSuccess(res, { data: service.publicProfile(req.user), message: 'Account' }),
+  sendSuccess(res, { data: await service.getProfile(req.user._id), message: 'Account' }),
 );
 
 export const update = asyncHandler(async (req, res) =>
@@ -20,4 +20,11 @@ export const changePassword = asyncHandler(async (req, res) =>
   }),
 );
 
-export default { me, update, changePassword };
+export const setApiKeys = asyncHandler(async (req, res) =>
+  sendSuccess(res, {
+    data: await service.setApiKeys({ user: req.user, patch: req.validated.body }),
+    message: 'API keys updated',
+  }),
+);
+
+export default { me, update, changePassword, setApiKeys };
