@@ -112,11 +112,12 @@ const schema = z.object({
   COOKIE_SECURE: bool(isProd),
   BCRYPT_ROUNDS: int(12),
 
-  // Encrypts users' own provider API keys (BYOK) at rest. A dedicated secret so
-  // rotating it only invalidates stored keys (users re-enter them), nothing
-  // else. Required in production; in dev/test it falls back to COOKIE_SECRET via
-  // `secretBox` so the suite boots without extra config.
-  APIKEY_ENC_SECRET: secret(32),
+  // Encrypts users' own provider API keys (BYOK) at rest. Optional: when unset,
+  // `secretBox` derives its key from COOKIE_SECRET (always present), so a deploy
+  // works without an extra variable. Set a dedicated value (>=32 chars) to keep
+  // the encryption key separate from cookie signing — then rotating it only
+  // invalidates stored keys (users re-enter them), nothing else.
+  APIKEY_ENC_SECRET: str(''),
 
   // Sign in with Google — server-side Authorization Code flow. All three live
   // here, on the server, and never in the client:
