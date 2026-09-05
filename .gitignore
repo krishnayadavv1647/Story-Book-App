@@ -23,11 +23,13 @@ playwright-report/
 blob-report/
 .playwright/
 
-# local artifacts
+# local artifacts (root-level runtime dirs only — an unanchored `storage/` also
+# matched the source directory `server/src/providers/storage/`, which then never
+# got committed and broke the deploy with ERR_MODULE_NOT_FOUND)
 tmp/
 *.local
-storage/
-uploads/
+/storage/
+/uploads/
 
 # logs
 logs/
