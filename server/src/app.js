@@ -73,6 +73,13 @@ export function createApp() {
 
   app.use(API_PREFIX, defaultLimiter, apiRoutes);
 
+  // A friendly root so platform health checks and uptime probes hitting `/`
+  // get a 200 instead of a logged 404. This is a JSON API — everything real
+  // lives under `/api/v1`. Express answers HEAD `/` with this handler too.
+  app.get('/', (_req, res) =>
+    res.json({ name: 'StoryBook Studio API', status: 'ok', api: `${API_PREFIX}/health` }),
+  );
+
   app.use(notFound);
   app.use(errorHandler);
 
