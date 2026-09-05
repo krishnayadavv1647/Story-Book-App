@@ -126,7 +126,6 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
 
-  const NotificationsIcon = SIDEBAR_FOOTER.notifications.icon;
   const SettingsIcon = SIDEBAR_FOOTER.settings.icon;
 
   // Collapse is a desktop-only affordance; on mobile the drawer is always full.
@@ -184,18 +183,6 @@ export function Sidebar() {
         instead. A deliberate deviation, recorded in the design source map.
       */}
       <div className={cn('shrink-0 space-y-2 pb-4 pt-3', gutter)}>
-        <FooterCard
-          item={SIDEBAR_FOOTER.notifications}
-          onNavigate={closeMobileNav}
-          className={cn(
-            'flex h-11 items-center rounded-lg border border-hairline bg-surface text-base',
-            collapsed ? 'justify-center' : 'pl-2.5',
-          )}
-        >
-          <NotificationsIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {!collapsed && <span className="ml-[15px]">{SIDEBAR_FOOTER.notifications.label}</span>}
-        </FooterCard>
-
         <FooterCard
           item={SIDEBAR_FOOTER.settings}
           onNavigate={closeMobileNav}

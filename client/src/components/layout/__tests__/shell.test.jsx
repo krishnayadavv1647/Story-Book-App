@@ -44,8 +44,8 @@ describe('Sidebar navigation (Shell B)', () => {
       }
     }
 
-    // The frame labels this "Upgrade"; with no payment provider connected it
-    expect(within(nav).getByRole('link', { name: 'Notifications' })).toBeInTheDocument();
+    // The footer carries the account settings link (Notifications was removed).
+    expect(within(nav).getByRole('link', { name: 'Settings' })).toBeInTheDocument();
   });
 
   it('lists only destinations that exist', () => {

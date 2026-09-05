@@ -1,4 +1,4 @@
-import { Bell, BookMarked, BookOpen, Compass, Settings, SquarePen } from 'lucide-react';
+import { BookMarked, BookOpen, Compass, Settings, SquarePen } from 'lucide-react';
 
 /**
  * The sidebar, measured from Figma `H98QB4Tdo6iH2EaXCerUlv` frame 1:2 and
@@ -76,8 +76,12 @@ export const PRIMARY_NAV = [
  * whole credit system. Nothing is charged for any more, so there is no balance
  * to show and no ledger to read.
  */
+/*
+ * Removed at the user's request (2026-09-05): the "Notifications" footer row.
+ * The `/notifications` route still resolves, so a bookmark or an old link keeps
+ * working, but nothing in the sidebar points at it any more.
+ */
 export const SIDEBAR_FOOTER = {
-  notifications: { key: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
   // Account settings — including each user's own API keys (BYOK). Added here
   // because the app had no way in to `/settings` at all; the route existed but
   // nothing pointed at it.
@@ -85,11 +89,7 @@ export const SIDEBAR_FOOTER = {
 };
 
 /** Every row the sidebar draws, built or not. */
-export const ALL_NAV_ITEMS = [
-  ...PRIMARY_NAV,
-  SIDEBAR_FOOTER.notifications,
-  SIDEBAR_FOOTER.settings,
-];
+export const ALL_NAV_ITEMS = [...PRIMARY_NAV, SIDEBAR_FOOTER.settings];
 
 export const ALL_NAV_PATHS = ALL_NAV_ITEMS.map((item) => item.path);
 
