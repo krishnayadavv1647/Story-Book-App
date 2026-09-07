@@ -63,7 +63,8 @@ touch Mongoose, and feature folders never re-implement provider logic.
 
 ## Secrets
 
-Gemini, Kie.ai, storage and database credentials are **server-side only**. Vite
+Gemini, Kie.ai, Resend, storage and database credentials are **server-side
+only**. Vite
 inlines every `VITE_*` value into the browser bundle, so no secret may ever use
 that prefix. `tests/contract/no-secret-leak.test.js` asserts this against both
 the source tree and the built bundle.
@@ -85,7 +86,7 @@ client's public values:
 
 | File | For | Notes |
 |---|---|---|
-| `server/.env.example` → `server/.env` | The API | Database, secrets, Gemini, Kie.ai, storage |
+| `server/.env.example` → `server/.env` | The API | Database, secrets, Gemini, Kie.ai, Resend, storage |
 | `client/.env.example` → `client/.env` | The browser bundle | `VITE_*` only, and **every value is public** — Vite inlines them |
 
 Most settings are commented out in the templates: those are the defaults the
@@ -114,6 +115,7 @@ npm start              # server on PORT
 | Point `MONGODB_URI` at a **replica set** | Credit debits and job transitions run in transactions; a standalone server silently degrades to unwrapped writes |
 | Set `STORAGE_BUCKET` and its keys | Without one the app falls back to an in-memory store that is lost on restart |
 | Set `GEMINI_API_KEY` and `KIE_API_KEY` | Without them planning and illustration return a clear "not configured" error |
+| Set `RESEND_API_KEY` and `MAIL_FROM` | The password-reset link is emailed through Resend. Without them nothing is sent, and a user who forgets their password has no way back in. `MAIL_FROM` must use a domain verified in the Resend account |
 | Set `PUBLIC_URL` | Kie.ai callbacks are delivered to it; without it the app falls back to polling |
 | Set `CORS_ORIGIN` to the client's origin | The refresh cookie is `SameSite` and scoped to `/api/v1/auth` |
 

@@ -138,6 +138,19 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: str(''),
   GOOGLE_REDIRECT_URI: str(''),
 
+  // Transactional email, through Resend. Optional: with either the key or the
+  // sender missing the server sends no mail at all — in development the
+  // password-reset link is written to the log instead, exactly as before.
+  //   · RESEND_API_KEY  — the API key (guarded; see SERVER_ONLY…).
+  //   · MAIL_FROM       — the From header, e.g. `StoryBook Studio
+  //     <no-reply@yourdomain.com>`. Resend refuses to send from a domain that
+  //     has not been verified in the account, so this has no useful default.
+  //   · MAIL_REPLY_TO   — optional Reply-To, when the From is a no-reply box.
+  RESEND_API_KEY: str(''),
+  MAIL_FROM: str(''),
+  MAIL_REPLY_TO: str(''),
+  MAIL_TIMEOUT_MS: int(15_000),
+
   RATE_LIMIT_WINDOW_MS: int(60_000),
   RATE_LIMIT_AUTH_MAX: int(10),
   RATE_LIMIT_CHAT_MAX: int(30),
@@ -230,6 +243,7 @@ export const SERVER_ONLY_SECRET_KEYS = Object.freeze([
   'KIE_API_KEY',
   'KIE_CALLBACK_SECRET',
   'GOOGLE_CLIENT_SECRET',
+  'RESEND_API_KEY',
   'STORAGE_ACCESS_KEY_ID',
   'STORAGE_SECRET_ACCESS_KEY',
   'REDIS_URL',

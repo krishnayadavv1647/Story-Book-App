@@ -4,6 +4,8 @@ import mongoose from 'mongoose';
 import { RefreshToken, User } from '../../models/index.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
+import { isMailConfigured, sendMail } from '../../providers/email/mailer.js';
+import { passwordResetEmail } from '../../providers/email/templates.js';
 import { ApiError } from '../../utils/ApiError.js';
 import {
   durationToMs,
@@ -195,11 +197,51 @@ export async function revokeAllSessions(userId, reason) {
 }
 
 /**
+ * Sends the reset link, and reports only whether it went out.
+ *
+ * A delivery failure is never raised to the caller: the reply to a reset
+ * request is identical whatever happens, so an error here would either leak
+ * that the address is registered or turn a working request into a 500. The log
+ * is the only place a failure is visible.
+ */
+async function deliverResetLink(user, link) {
+  if (!isMailConfigured()) {
+    if (env.NODE_ENV === 'production') {
+      logger.warn(
+        { userId: String(user._id) },
+        'Password reset requested but no mailer is configured',
+      );
+    }
+    return false;
+  }
+
+  try {
+    await sendMail({
+      to: user.email,
+      ...passwordResetEmail({
+        name: user.name,
+        link,
+        expiresInMinutes: Math.round(RESET_TTL_MS / 60_000),
+      }),
+      tags: [{ name: 'type', value: 'password_reset' }],
+    });
+    return true;
+  } catch (error) {
+    logger.error(
+      { userId: String(user._id), code: error.code, retryable: error.retryable },
+      'Could not send the password reset email',
+    );
+    return false;
+  }
+}
+
+/**
  * Always resolves the same way whether or not the address is registered — the
  * response must not reveal who has an account.
  *
- * Mail delivery is not wired up yet, so in development the link is logged. The
- * returned token is surfaced to the caller ONLY outside production.
+ * With a mailer configured the link is emailed. Without one — the default in
+ * development — it is logged instead, and the raw token comes back to the
+ * caller, which surfaces it ONLY outside production.
  */
 export async function requestPasswordReset({ email }) {
   const user = await User.findOne({ email });
@@ -214,14 +256,14 @@ export async function requestPasswordReset({ email }) {
   await user.save();
 
   const link = `${env.CLIENT_ORIGIN[0]}/reset-password?token=${raw}`;
+  const delivered = await deliverResetLink(user, link);
+
   if (env.NODE_ENV !== 'production') {
     logger.info({ email: user.email }, `Password reset link (dev only): ${link}`);
-    return { delivered: false, devToken: raw };
+    return { delivered, devToken: raw };
   }
 
-  // TODO(P11): send through the mail provider once one is configured.
-  logger.warn({ userId: String(user._id) }, 'Password reset requested but no mailer is configured');
-  return { delivered: false };
+  return { delivered };
 }
 
 export async function resetPassword({ token, password }) {

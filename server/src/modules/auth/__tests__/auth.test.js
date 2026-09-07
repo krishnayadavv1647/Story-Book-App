@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } from 'vitest';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
 import { createApp, API_PREFIX } from '../../../app.js';
 import { RefreshToken, User } from '../../../models/index.js';
+import { sendMail } from '../../../providers/email/mailer.js';
 
 // The real provider reaches Google's servers, which the suite must never do.
 // Replacing this one seam lets the whole callback → find-or-create → session
@@ -25,6 +26,15 @@ vi.mock('../../../providers/google/googleAuth.js', () => ({
       picture: p.picture ?? null,
     };
   }),
+}));
+
+// Mail is switched off in the test environment, so the send path would never
+// run here. This turns it on with a provider that only records what it was
+// asked to send — enough to prove the reset link reaches the message, without
+// anything leaving the machine.
+vi.mock('../../../providers/email/mailer.js', () => ({
+  isMailConfigured: () => true,
+  sendMail: vi.fn(async () => ({ id: 'test-mail-id' })),
 }));
 
 /** A stand-in authorization code the mocked exchange will decode into a profile. */
@@ -402,6 +412,8 @@ describe('POST /auth/logout', () => {
 });
 
 describe('password reset', () => {
+  beforeEach(() => sendMail.mockClear());
+
   it('answers identically for a registered and an unregistered address', async () => {
     await registerUser();
 
@@ -413,6 +425,42 @@ describe('password reset', () => {
     expect(known.status).toBe(200);
     expect(unknown.status).toBe(200);
     expect(known.body.message).toBe(unknown.body.message);
+
+    // Only the registered address is written to; the reply gives that away
+    // nowhere, but sending to a stranger would.
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    expect(sendMail.mock.calls[0][0].to).toBe(CREDENTIALS.email);
+  });
+
+  it('emails the reset link to the account', async () => {
+    await registerUser();
+
+    const forgot = await request(app)
+      .post(auth('/forgot-password'))
+      .send({ email: CREDENTIALS.email });
+    const token = forgot.body.data.devToken;
+
+    const message = sendMail.mock.calls.at(-1)[0];
+    expect(message.subject).toMatch(/password/i);
+    expect(message.html).toContain(token);
+    // The text alternative has to work on its own — some clients show only it.
+    expect(message.text).toContain(token);
+  });
+
+  it('answers normally when the mail provider fails', async () => {
+    // A bounce must not reveal that the address is registered, and must not
+    // turn a working request into a 500.
+    sendMail.mockRejectedValueOnce(new Error('provider is down'));
+    await registerUser();
+
+    const res = await request(app).post(auth('/forgot-password')).send({ email: CREDENTIALS.email });
+
+    expect(res.status).toBe(200);
+    // The link itself is still valid — only its delivery failed.
+    const user = await User.findOne({ email: CREDENTIALS.email }).select(
+      '+passwordReset.tokenHash',
+    );
+    expect(user.passwordReset.tokenHash).toEqual(expect.any(String));
   });
 
   it('resets the password, invalidates the link and ends every session', async () => {
