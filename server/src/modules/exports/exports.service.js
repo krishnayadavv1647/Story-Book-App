@@ -17,6 +17,7 @@ import { PAGE_SIZES } from './render/layout.js';
 const FORMAT_EXT = {
   pdf: 'pdf',
   print_pdf: 'pdf',
+  spread_pdf: 'pdf',
   png: 'png',
   cover_spread: 'png',
   cover_front: 'png',
@@ -29,6 +30,7 @@ const FORMAT_EXT = {
 const CONTENT_TYPE = {
   pdf: 'application/pdf',
   print_pdf: 'application/pdf',
+  spread_pdf: 'application/pdf',
   html: 'text/html; charset=utf-8',
   png_pages: 'application/zip',
 };
@@ -65,22 +67,29 @@ export function suggestFilename(book, format) {
  * size is only known once the file exists.
  */
 export function estimateSize({ pageCount, format, quality }) {
-  // Rough bytes per page by format: the flipbook inlines images as base64
-  // (~1.37x), and the print-ready PDF embeds full 300-DPI art, so both run
-  // heavier than the on-screen PDF. The cover spread is a single large image.
-  const perPage =
-    format === 'cover_spread' || format === 'cover_front' || format === 'cover_back'
-      ? 3_000_000
-      : format === 'print_pdf'
-        ? 2_500_000
-        : format === 'png_pages'
-          ? 2_200_000
-          : format === 'pdf'
-            ? 900_000
-            : format === 'html'
-              ? 1_900_000
-              : 1_400_000;
+  /**
+   * Rough bytes per page, by format. The flipbook inlines its images as base64
+   * (~1.37x), the print-ready PDF embeds full 300-DPI art, and a cover export is
+   * one large image however many pages the book has — so they are nothing like
+   * the on-screen PDF and cannot share a number.
+   */
+  const PER_PAGE = {
+    cover_spread: 3_000_000,
+    cover_front: 3_000_000,
+    cover_back: 3_000_000,
+    print_pdf: 2_500_000,
+    png_pages: 2_200_000,
+    html: 1_900_000,
+    pdf: 900_000,
+    // The same art as `pdf`, just arranged two leaves to a sheet. `pageCount`
+    // here is the book's pages, not the sheets they land on, so the per-page
+    // figure is the same one — the total does not change by pairing them.
+    spread_pdf: 900_000,
+  };
+
+  const perPage = PER_PAGE[format] ?? 1_400_000;
   const qualityFactor = quality === 'print' ? 2.2 : quality === 'high' ? 1.4 : 1;
+
   return Math.round(Math.max(pageCount, 1) * perPage * qualityFactor);
 }
 
@@ -187,6 +196,20 @@ export async function requestExport({ user, book, format, quality, options = {} 
     let rendered;
     if (format === 'pdf') {
       rendered = await renderBookPdf({ book, pages, options: { ...resolved, quality } });
+    } else if (format === 'spread_pdf') {
+      // The reading copy: facing pages together, no crop marks and no bleed —
+      // those belong to a sheet somebody is going to cut, not to a screen.
+      rendered = await renderBookPdf({
+        book,
+        pages,
+        options: {
+          ...resolved,
+          quality,
+          spreads: true,
+          bleedMm: 0,
+          cropMarks: false,
+        },
+      });
     } else if (format === 'print_pdf') {
       // Print-ready: true physical size and bleed from the book's print
       // settings, crop marks if asked, 300-DPI art, and no watermark or guides.

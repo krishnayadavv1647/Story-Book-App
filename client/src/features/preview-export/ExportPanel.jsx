@@ -33,6 +33,12 @@ const FORMATS = [
     hint: 'True size, bleed & crop marks',
     icon: Printer,
   },
+  {
+    value: 'spread_pdf',
+    label: 'Book Spreads',
+    hint: 'Two pages side by side',
+    icon: BookOpen,
+  },
   { value: 'html', label: 'Flipbook', hint: 'Interactive, turns pages', icon: BookOpen },
   { value: 'png', label: 'Images', hint: 'All pages in one PNG', icon: ImageIcon },
   { value: 'png_pages', label: 'PNG pages', hint: 'Each page, 300 DPI, zipped', icon: Files },

@@ -627,6 +627,72 @@ describe('the PDF renderer', () => {
     image: WIDE,
   };
 
+  /**
+   * `/PageLayout /TwoPageRight` would ask a viewer to pair the pages and leave
+   * the file alone, and Acrobat obliges — but Chrome ignores it, which is where
+   * most people open a PDF. So the pairing is in the geometry instead, and this
+   * is what checks it stayed there.
+   */
+  describe('book spreads', () => {
+    const mediaBoxes = (buffer) => [
+      ...buffer.toString('latin1').matchAll(/\/MediaBox \[([^\]]+)\]/g),
+    ].map((match) => match[1].trim().split(/\s+/).map(Number));
+
+    const leaves = [
+      { ...page, order: 1 },
+      { ...page, order: 2 },
+      { ...page, order: 3 },
+    ];
+
+    it('puts two leaves on a double-width sheet', async () => {
+      const single = await renderBookPdf({ book: { title: 'Mira' }, pages: leaves });
+      const spread = await renderBookPdf({
+        book: { title: 'Mira' },
+        pages: leaves,
+        options: { spreads: true },
+      });
+
+      const box = pageBox({ pageSize: 'a4' });
+      const [width, height] = mediaBoxes(spread.buffer)[0].slice(2);
+
+      expect(width).toBeCloseTo(box.width * 2, 1);
+      expect(height).toBeCloseTo(box.height, 1);
+
+      // The same leaves, on half as many sheets — plus one, because the cover
+      // opens alone on the right the way a book does.
+      expect(spread.leafCount).toBe(single.pageCount);
+      expect(spread.pageCount).toBe(Math.ceil((single.pageCount - 1) / 2) + 1);
+    });
+
+    it('leaves the single-page file exactly as it was', async () => {
+      const { buffer, pageCount } = await renderBookPdf({
+        book: { title: 'Mira' },
+        pages: leaves,
+      });
+
+      const box = pageBox({ pageSize: 'a4' });
+      const boxes = mediaBoxes(buffer);
+
+      expect(boxes).toHaveLength(pageCount);
+      for (const [, , width] of boxes) expect(width).toBeCloseTo(box.width, 1);
+    });
+
+    it('really shares one sheet between two leaves', async () => {
+      // Counting the art per sheet is the check that survives: the cover opens
+      // alone, and the sheet after it carries two leaves' worth.
+      const { buffer } = await renderBookPdf({
+        book: { title: 'Mira' },
+        pages: leaves,
+        options: { spreads: true },
+      });
+
+      const perSheet = pageOperators(buffer).map((ops) => imagePlacements(ops).length);
+
+      expect(perSheet[0]).toBe(1);
+      expect(perSheet[1]).toBe(2);
+    });
+  });
+
   it('keeps every illustration inside the box the layout gave it', async () => {
     const { buffer } = await renderBookPdf({
       book: { title: 'Mira' },

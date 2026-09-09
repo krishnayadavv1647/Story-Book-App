@@ -252,10 +252,48 @@ export async function renderBookPdf({ book, pages, options = {} }) {
     doc.on('error', reject);
   });
 
+  /**
+   * Where each leaf of the book lands on paper.
+   *
+   * Normally one leaf per sheet. With `spreads`, two leaves share a
+   * double-width sheet so the file reads like an open book — the cover alone on
+   * the right of the first sheet, exactly as a book opens, and every pair after
+   * it side by side. Nothing about how a leaf is drawn changes: the origin is
+   * moved to its half and the same drawing code runs against `box` as before.
+   *
+   * `/PageLayout /TwoPageRight` would ask a viewer to do this without touching
+   * the pages, and Acrobat obliges — but Chrome ignores it entirely, which is
+   * where most readers open a file. So the pairing is done in the geometry,
+   * where no viewer can decline it.
+   */
+  const spreads = Boolean(options.spreads);
+  const sheetSize = spreads ? [box.width * 2, box.height] : [box.width, box.height];
+
   let sheets = 0;
+  let leaves = 0;
+  let leafOpen = false;
+
   const newSheet = () => {
-    doc.addPage({ size: [box.width, box.height], margin: 0 });
-    sheets += 1;
+    if (leafOpen) {
+      doc.restore();
+      leafOpen = false;
+    }
+
+    // A new sheet for every leaf normally; when pairing, for the cover and then
+    // for each odd leaf, which is the one that opens a spread on the left.
+    if (!spreads || leaves === 0 || leaves % 2 === 1) {
+      doc.addPage({ size: sheetSize, margin: 0 });
+      sheets += 1;
+    }
+
+    if (spreads) {
+      const onRight = leaves === 0 || leaves % 2 === 0;
+      doc.save();
+      doc.translate(onRight ? box.width : 0, 0);
+      leafOpen = true;
+    }
+
+    leaves += 1;
   };
 
   if (options.includeCover !== false) {
@@ -341,10 +379,14 @@ export async function renderBookPdf({ book, pages, options = {} }) {
     if (options.bleedMm || options.cropMarks) drawBleedMarks(doc, box);
   }
 
+  if (leafOpen) doc.restore();
+
   doc.end();
   await finished;
 
-  return { buffer: Buffer.concat(chunks), pageCount: sheets };
+  // `pageCount` is what the reader will page through, so it counts sheets — in
+  // a spread file that is half the number of leaves, which is the point.
+  return { buffer: Buffer.concat(chunks), pageCount: sheets, leafCount: leaves };
 }
 
 export { PAGE_SIZES, coverRect };

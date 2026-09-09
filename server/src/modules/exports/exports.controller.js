@@ -3,6 +3,7 @@ import { sendCreated, sendSuccess } from '../../utils/apiResponse.js';
 import * as service from './exports.service.js';
 import { runPrintCheck } from './printChecker.js';
 import { PAGE_SIZES } from './render/layout.js';
+import { EXPORT_FORMATS } from '../../models/enums.js';
 
 /**
  * Runs the print-quality checker for a book and returns its report. Read-only:
@@ -59,26 +60,31 @@ export const options = asyncHandler(async (req, res) => {
         value,
         label: size.label,
       })),
-      filename: {
-        pdf: service.suggestFilename(req.book, 'pdf'),
-        png: service.suggestFilename(req.book, 'png'),
-        html: service.suggestFilename(req.book, 'html'),
-        print_pdf: service.suggestFilename(req.book, 'print_pdf'),
-        cover_spread: service.suggestFilename(req.book, 'cover_spread'),
-        cover_front: service.suggestFilename(req.book, 'cover_front'),
-        cover_back: service.suggestFilename(req.book, 'cover_back'),
-        png_pages: service.suggestFilename(req.book, 'png_pages'),
-      },
-      estimatedSizeBytes: {
-        pdf: service.estimateSize({ pageCount: readiness.total, format: 'pdf', quality: 'high' }),
-        png: service.estimateSize({ pageCount: readiness.total, format: 'png', quality: 'high' }),
-        html: service.estimateSize({ pageCount: readiness.total, format: 'html', quality: 'high' }),
-        print_pdf: service.estimateSize({ pageCount: readiness.total, format: 'print_pdf', quality: 'print' }),
-        cover_spread: service.estimateSize({ pageCount: 1, format: 'cover_spread', quality: 'print' }),
-        cover_front: service.estimateSize({ pageCount: 1, format: 'cover_front', quality: 'print' }),
-        cover_back: service.estimateSize({ pageCount: 1, format: 'cover_back', quality: 'print' }),
-        png_pages: service.estimateSize({ pageCount: readiness.total, format: 'png_pages', quality: 'print' }),
-      },
+      /**
+       * Both maps are built from the format enum rather than listed by hand. A
+       * format missing from a hand-written list shows up in the picker with no
+       * name and no size — an omission nobody notices until somebody exports.
+       */
+      filename: Object.fromEntries(
+        EXPORT_FORMATS.map((format) => [format, service.suggestFilename(req.book, format)]),
+      ),
+      estimatedSizeBytes: Object.fromEntries(
+        EXPORT_FORMATS.map((format) => {
+          // A cover is one image however long the book is, and anything bound
+          // for paper is quoted at the resolution it will really be made at.
+          const isCover = format.startsWith('cover_');
+          const forPaper = isCover || format === 'print_pdf' || format === 'png_pages';
+
+          return [
+            format,
+            service.estimateSize({
+              pageCount: isCover ? 1 : readiness.total,
+              format,
+              quality: forPaper ? 'print' : 'high',
+            }),
+          ];
+        }),
+      ),
     },
     message: 'Export options',
   });

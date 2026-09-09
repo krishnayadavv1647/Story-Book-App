@@ -67,6 +67,9 @@ export const EXPORT_FORMATS = [
   'pdf',
   'png',
   'html',
+  // Two leaves to a sheet, so the file reads like an open book. For screens and
+  // for sending to someone — a printer wants `print_pdf`, which stays single.
+  'spread_pdf',
   'print_pdf',
   'cover_spread',
   // `png_pages` is a zip of one 300-DPI PNG per page; the cover files are single
