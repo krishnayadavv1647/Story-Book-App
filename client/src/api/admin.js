@@ -1,9 +1,13 @@
 import { api } from './client.js';
 
 export const fetchOverview = () => api.get('/admin/overview');
-export const listUsers = ({ search, limit = 25 } = {}) =>
-  api.list('/admin/users', { query: { search: search || undefined, limit } });
+export const listUsers = ({ search, page = 1, limit = 25 } = {}) =>
+  api.list('/admin/users', { query: { search: search || undefined, page, limit } });
+export const fetchUserDetail = (userId) => api.get(`/admin/users/${userId}`);
 export const fetchAudit = () => api.get('/admin/audit');
+
+/** Suspend, reactivate, promote, demote. Refused on your own account. */
+export const updateUser = (userId, patch) => api.patch(`/admin/users/${userId}`, patch);
 
 /**
  * Moves one account's balance. `amount` is signed — positive tops up, negative
@@ -12,4 +16,29 @@ export const fetchAudit = () => api.get('/admin/audit');
 export const adjustUserCredits = (userId, { amount, reason = '' }) =>
   api.post(`/admin/users/${userId}/credits`, { amount, reason });
 
-export default { fetchOverview, listUsers, fetchAudit, adjustUserCredits };
+/* ------------------------------------------------------------------ plans -- */
+
+/** Every plan, including drafts nobody can see yet. */
+export const listPlans = () => api.get('/admin/plans');
+export const createPlan = (body) => api.post('/admin/plans', body);
+export const updatePlan = (planId, patch) => api.patch(`/admin/plans/${planId}`, patch);
+export const deletePlan = (planId) => api.delete(`/admin/plans/${planId}`);
+
+/** Putting an account on a plan is what hands over the plan's credits. */
+export const assignPlan = (userId, planId) => api.post(`/admin/users/${userId}/plan`, { planId });
+export const cancelPlan = (userId) => api.delete(`/admin/users/${userId}/plan`);
+
+export default {
+  fetchOverview,
+  listUsers,
+  fetchUserDetail,
+  fetchAudit,
+  updateUser,
+  adjustUserCredits,
+  listPlans,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  assignPlan,
+  cancelPlan,
+};

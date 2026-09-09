@@ -10,8 +10,12 @@ function adopt(payload) {
   return { user: payload.user };
 }
 
+/**
+ * Creates the account. No session comes back: the reply says an address needs
+ * proving, and `verifyLoginCode` is what turns the emailed code into a session.
+ */
 export async function register(body) {
-  return adopt(await api.post('/auth/register', body));
+  return api.post('/auth/register', body);
 }
 
 export async function login(body) {
@@ -43,6 +47,19 @@ export async function logout() {
   }
 }
 
+/**
+ * Ask for a one-time sign-in code. Creates the account if the address is new,
+ * which is how signing up with a code works — there is no separate register
+ * call. The reply is deliberately identical either way.
+ */
+export async function requestLoginCode(body) {
+  return api.post('/auth/otp/request', body);
+}
+
+export async function verifyLoginCode(body) {
+  return adopt(await api.post('/auth/otp/verify', body));
+}
+
 export async function forgotPassword(body) {
   return api.post('/auth/forgot-password', body);
 }
@@ -59,4 +76,6 @@ export default {
   logout,
   forgotPassword,
   resetPassword,
+  requestLoginCode,
+  verifyLoginCode,
 };

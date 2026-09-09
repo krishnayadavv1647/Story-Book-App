@@ -141,4 +141,45 @@ export function passwordResetEmail({ name, link, expiresInMinutes }) {
   };
 }
 
-export default { passwordResetEmail };
+/**
+ * The one-time sign-in code.
+ *
+ * The code is the whole message, so it is set large and spaced: this is read
+ * off a phone screen and typed into another window, often twice, and small
+ * tracking-tight digits are how a 6 becomes an 8.
+ *
+ * No link, deliberately. A code that only works when typed into the page the
+ * reader already has open cannot be forwarded into somebody else's browser.
+ */
+export function loginCodeEmail({ name, code, expiresInMinutes }) {
+  const greeting = name ? `Hi ${escapeHtml(name)},` : 'Hi,';
+
+  return {
+    subject: `${code} is your ${APP_NAME} sign-in code`,
+    html: layout({
+      preheader: `Your code expires in ${expiresInMinutes} minutes.`,
+      heading: 'Your sign-in code',
+      paragraphs: [
+        greeting,
+        'Enter this code to finish signing in:',
+        `<span style="display:inline-block;padding:12px 20px;border-radius:10px;background-color:${COLOR.ground};border:1px solid ${COLOR.border};font-family:'Courier New',Courier,monospace;font-size:30px;font-weight:700;letter-spacing:8px;color:${COLOR.heading};">${escapeHtml(code)}</span>`,
+      ],
+      footer: [
+        `The code expires in ${expiresInMinutes} minutes and can be used once.`,
+        'If you did not try to sign in, you can ignore this email — nobody can get in without the code.',
+      ],
+    }),
+    text: [
+      name ? `Hi ${name},` : 'Hi,',
+      '',
+      `Your ${APP_NAME} sign-in code is: ${code}`,
+      '',
+      `It expires in ${expiresInMinutes} minutes and can be used once.`,
+      'If you did not try to sign in, ignore this email.',
+      '',
+      APP_NAME,
+    ].join('\n'),
+  };
+}
+
+export default { passwordResetEmail, loginCodeEmail };

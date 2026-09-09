@@ -83,29 +83,53 @@ afterEach(async () => {
   await Promise.all(Object.values(collections).map((c) => c.deleteMany({})));
 });
 
-async function registerUser(overrides = {}) {
+/** The raw register call — no session comes back from it any more. */
+async function startSignUp(overrides = {}) {
   return request(app)
     .post(auth('/register'))
     .send({ ...CREDENTIALS, ...overrides });
 }
 
+/**
+ * A finished signup: register, then type the emailed code. Verification is not
+ * optional now, so every test that needs a signed-in account goes through both.
+ */
+async function registerUser(overrides = {}) {
+  const created = await startSignUp(overrides);
+  const email = overrides.email ?? CREDENTIALS.email;
+
+  return request(app)
+    .post(auth('/otp/verify'))
+    .send({ email, code: created.body.data.devCode });
+}
+
 describe('POST /auth/register', () => {
-  it('creates the account and signs it in', async () => {
-    const res = await registerUser();
+  it('creates the account but does not sign it in until the address is proved', async () => {
+    const res = await startSignUp();
 
     expect(res.status).toBe(201);
-    expect(res.body.success).toBe(true);
+    expect(res.body.data.verificationRequired).toBe(true);
+    // The whole point: no session falls out of registering.
+    expect(res.body.data.accessToken).toBeUndefined();
+    expect((res.headers['set-cookie'] ?? []).join()).not.toContain('sb_refresh=');
+
+    // The account is really there, and waiting.
+    const user = await User.findOne({ email: 'krishna@example.com' });
+    expect(user).toBeTruthy();
+    expect(user.emailVerifiedAt).toBeNull();
+  });
+
+  it('signs the account in once the emailed code is typed back', async () => {
+    const res = await registerUser();
+
+    expect(res.status).toBe(200);
     expect(res.body.data.accessToken).toEqual(expect.any(String));
     expect(res.body.data.user).toMatchObject({
       name: 'Krishna Yadav',
       email: 'krishna@example.com',
       role: 'user',
     });
-
-    // The account is really there, not just echoed back in the response.
-    const user = await User.findOne({ email: 'krishna@example.com' });
-    expect(user).toBeTruthy();
-    expect(String(user._id)).toBe(res.body.data.user.id);
+    expect((await User.findOne({ email: 'krishna@example.com' })).emailVerifiedAt).toBeTruthy();
   });
 
   it('issues the refresh token as an httpOnly cookie scoped to the auth routes', async () => {
@@ -130,8 +154,8 @@ describe('POST /auth/register', () => {
   });
 
   it('rejects a duplicate email', async () => {
-    await registerUser();
-    const res = await registerUser();
+    await startSignUp();
+    const res = await startSignUp();
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('CONFLICT');
@@ -139,7 +163,7 @@ describe('POST /auth/register', () => {
   });
 
   it('rejects a password that is too short', async () => {
-    const res = await registerUser({ password: 'short' });
+    const res = await startSignUp({ password: 'short' });
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -416,6 +440,8 @@ describe('password reset', () => {
 
   it('answers identically for a registered and an unregistered address', async () => {
     await registerUser();
+    // Signing up sends a code; the mail under test here is the reset link.
+    sendMail.mockClear();
 
     const known = await request(app).post(auth('/forgot-password')).send({ email: CREDENTIALS.email });
     const unknown = await request(app)

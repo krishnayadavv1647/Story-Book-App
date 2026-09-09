@@ -13,16 +13,18 @@ const userSchema = new mongoose.Schema(
       // Structural check only; deliverability is proven by the verification mail.
       match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
-    // `select: false` — a hash must be asked for explicitly, never returned by default.
-    // Required for everyone EXCEPT a Google-only account, which authenticates
-    // through Google and never sets one.
-    passwordHash: {
-      type: String,
-      required: function passwordRequiredUnlessGoogle() {
-        return !this.googleId;
-      },
-      select: false,
-    },
+    /**
+     * `select: false` — a hash must be asked for explicitly, never returned by
+     * default.
+     *
+     * Optional, because there are three ways in and only one of them uses a
+     * password: an emailed one-time code and Sign in with Google both leave
+     * this null. The schema cannot say which door an account came through, so
+     * it no longer pretends to; `verifyPassword` returns false without a hash,
+     * which is what actually keeps the password route shut on those accounts.
+     * The register endpoint still demands a password of its own callers.
+     */
+    passwordHash: { type: String, default: null, select: false },
     // The Google account's stable subject id (`sub`), set when an account is
     // created through or linked to Sign in with Google. Null for password-only
     // accounts. Uniqueness is enforced by a partial index below so the many
@@ -45,6 +47,21 @@ const userSchema = new mongoose.Schema(
     passwordReset: {
       tokenHash: { type: String, default: null, select: false },
       expiresAt: { type: Date, default: null, select: false },
+      requestedAt: { type: Date, default: null, select: false },
+    },
+
+    /**
+     * The one-time code emailed for a passwordless sign-in.
+     *
+     * Only the hash is kept, exactly as for a password reset — a leaked database
+     * must not hand anybody a working code. `attempts` is what makes six digits
+     * safe: the code is burned after OTP_MAX_ATTEMPTS wrong guesses, so it
+     * cannot be walked through inside its lifetime.
+     */
+    loginCode: {
+      codeHash: { type: String, default: null, select: false },
+      expiresAt: { type: Date, default: null, select: false },
+      attempts: { type: Number, default: 0, select: false },
       requestedAt: { type: Date, default: null, select: false },
     },
 

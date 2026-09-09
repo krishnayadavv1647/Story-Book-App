@@ -1,4 +1,12 @@
-import { BookMarked, BookOpen, Coins, Compass, Settings, SquarePen } from 'lucide-react';
+import {
+  BookMarked,
+  BookOpen,
+  Coins,
+  Compass,
+  Settings,
+  ShieldCheck,
+  SquarePen,
+} from 'lucide-react';
 
 /**
  * The sidebar, measured from Figma `H98QB4Tdo6iH2EaXCerUlv` frame 1:2 and
@@ -81,13 +89,29 @@ export const PRIMARY_NAV = [
  * working, but nothing in the sidebar points at it any more.
  */
 export const SIDEBAR_FOOTER = {
+  /**
+   * The operations screen. Added at the user's request (2026-09-09), reversing
+   * the earlier decision to keep it out of the navigation entirely.
+   *
+   * `adminOnly` is the whole reason it can be here: the sidebar is drawn for
+   * every reader, and a row leading to a screen that refuses them would be
+   * worse than no row at all. The Sidebar checks the flag; the route and every
+   * request behind it are guarded on the server regardless.
+   */
+  admin: {
+    key: 'admin',
+    label: 'Admin',
+    icon: ShieldCheck,
+    path: '/admin',
+    adminOnly: true,
+  },
   // Account settings. Added here because the app had no way in to `/settings`
   // at all; the route existed but nothing pointed at it.
   settings: { key: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
 };
 
 /** Every row the sidebar draws, built or not. */
-export const ALL_NAV_ITEMS = [...PRIMARY_NAV, SIDEBAR_FOOTER.settings];
+export const ALL_NAV_ITEMS = [...PRIMARY_NAV, SIDEBAR_FOOTER.admin, SIDEBAR_FOOTER.settings];
 
 export const ALL_NAV_PATHS = ALL_NAV_ITEMS.map((item) => item.path);
 

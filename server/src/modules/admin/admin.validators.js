@@ -10,4 +10,17 @@ export const listUsersQuerySchema = z.object({
 
 export const userParamSchema = z.object({ userId: objectId });
 
-export default { listUsersQuerySchema, userParamSchema };
+/**
+ * Suspending, reactivating, promoting or demoting an account. Both fields are
+ * optional but at least one must be present — an empty PATCH would write an
+ * audit entry describing nothing.
+ */
+export const updateUserSchema = z
+  .object({
+    status: z.enum(['active', 'suspended']),
+    role: z.enum(['user', 'admin']),
+  })
+  .partial()
+  .refine((patch) => Object.keys(patch).length > 0, { message: 'Nothing to update' });
+
+export default { listUsersQuerySchema, userParamSchema, updateUserSchema };

@@ -132,6 +132,18 @@ const schema = z.object({
    * 90 credits, so an opening balance covers roughly five books.
    */
   CREDITS_SIGNUP_GRANT: int(500),
+  /**
+   * The plan every brand-new account is put on, whichever way it signed up.
+   *
+   * Set it and the plan's credits are what a new account opens with — in which
+   * case CREDITS_SIGNUP_GRANT should usually be 0, or the two stack and every
+   * account starts with both. Blank means no plan and the flat grant alone.
+   *
+   * A key that matches no active plan grants nothing and says so in the log;
+   * signing up still works, because failing a registration over a missing bonus
+   * would be the worse outcome.
+   */
+  SIGNUP_PLAN_KEY: str(''),
   CREDITS_STORY_PLAN: int(10),
   CREDITS_IMAGE: int(5),
   CREDITS_CHARACTER: int(5),
@@ -161,6 +173,23 @@ const schema = z.object({
   MAIL_FROM: str(''),
   MAIL_REPLY_TO: str(''),
   MAIL_TIMEOUT_MS: int(15_000),
+
+  /**
+   * Sign in with a one-time code emailed to the address.
+   *
+   * The endpoints are public: another app's browser calls them directly, which
+   * is what lets a partner register someone without holding a secret. That
+   * makes the numbers below the only thing standing between the mailer and a
+   * stranger, so they are settings rather than constants.
+   *
+   * SIGNUP_PLAN_KEY lives with the credit settings below — it is not specific to
+   * this route.
+   */
+  OTP_CODE_TTL_MINUTES: int(10),
+  // Six digits is a million combinations; without an attempt cap that is
+  // guessable inside the TTL, so this is load-bearing, not decoration.
+  OTP_MAX_ATTEMPTS: int(5),
+  OTP_RESEND_COOLDOWN_S: int(60),
 
   RATE_LIMIT_WINDOW_MS: int(60_000),
   RATE_LIMIT_AUTH_MAX: int(10),

@@ -5,8 +5,9 @@ import { RefreshToken, User } from '../../models/index.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
 import { isMailConfigured, sendMail } from '../../providers/email/mailer.js';
-import { passwordResetEmail } from '../../providers/email/templates.js';
+import { loginCodeEmail, passwordResetEmail } from '../../providers/email/templates.js';
 import { recordSignupGrant } from '../credits/credits.service.js';
+import { assignPlanByKey } from '../plans/plans.service.js';
 import { ApiError } from '../../utils/ApiError.js';
 import {
   durationToMs,
@@ -17,6 +18,26 @@ import {
 } from '../../utils/tokens.js';
 
 const RESET_TTL_MS = 30 * 60 * 1000;
+
+/** Six digits: short enough to read off a phone and retype without a mistake. */
+const CODE_LENGTH = 6;
+
+/**
+ * `randomInt` and not `Math.random`: this is a credential, and a predictable
+ * one is no credential at all.
+ */
+function generateLoginCode() {
+  return String(crypto.randomInt(0, 10 ** CODE_LENGTH)).padStart(CODE_LENGTH, '0');
+}
+
+/**
+ * A name for an account created by someone typing only their email. The local
+ * part is the best guess available, and the user can change it in Settings.
+ */
+function nameFromEmail(email) {
+  const local = String(email).split('@')[0].replace(/[._-]+/g, ' ').trim();
+  return local ? local.charAt(0).toUpperCase() + local.slice(1) : 'Reader';
+}
 
 function sessionMeta(req) {
   return {
@@ -54,7 +75,74 @@ export async function toSessionPayload(user) {
   };
 }
 
-export async function register({ name, email, password }, req) {
+/**
+ * Everything a brand-new account gets, wherever it signed up from.
+ *
+ * Three routes create accounts — the register form, Sign in with Google, and a
+ * code sent to an address nobody has used before — and all three come through
+ * here, so a new arrival cannot end up with a plan on one path and nothing on
+ * another.
+ */
+async function openNewAccount(user) {
+  await recordSignupGrant(user);
+
+  const granted = await assignPlanByKey({ userId: user._id, key: env.SIGNUP_PLAN_KEY });
+  // The document in hand is now behind the database, and the caller may be
+  // about to build a session payload out of it.
+  if (granted) user.credits = granted.balance;
+}
+
+/**
+ * Puts a fresh code on the account and mails it.
+ *
+ * Shared by every route that needs one — asking for a code, registering, and
+ * signing in to an address that was never verified — so the cooldown and the
+ * hashing rules cannot drift apart between them.
+ */
+async function issueLoginCode(user) {
+  const lastSent = user.loginCode?.requestedAt;
+  if (lastSent && Date.now() - lastSent.getTime() < env.OTP_RESEND_COOLDOWN_S * 1000) {
+    // The code already sent is still valid, so there is nothing to do.
+    return { delivered: false, throttled: true };
+  }
+
+  const code = generateLoginCode();
+  user.loginCode = {
+    codeHash: hashToken(code),
+    expiresAt: new Date(Date.now() + env.OTP_CODE_TTL_MINUTES * 60 * 1000),
+    attempts: 0,
+    requestedAt: new Date(),
+  };
+  await user.save();
+
+  let delivered = false;
+  if (isMailConfigured()) {
+    try {
+      await sendMail({
+        to: user.email,
+        ...loginCodeEmail({ name: user.name, code, expiresInMinutes: env.OTP_CODE_TTL_MINUTES }),
+        tags: [{ name: 'type', value: 'login_code' }],
+      });
+      delivered = true;
+    } catch (error) {
+      logger.error(
+        { userId: String(user._id), code: error.code },
+        'Could not send the sign-in code',
+      );
+    }
+  }
+
+  // Outside production the code is handed back so the flow can be walked
+  // through without a mail provider configured.
+  if (env.NODE_ENV !== 'production') {
+    logger.info({ email: user.email }, `Sign-in code (dev only): ${code}`);
+    return { delivered, code };
+  }
+
+  return { delivered };
+}
+
+export async function register({ name, email, password }) {
   const existing = await User.findOne({ email });
   if (existing) {
     // The address is already visible to whoever owns it, and refusing to say so
@@ -63,16 +151,21 @@ export async function register({ name, email, password }, req) {
   }
 
   const user = await User.create({ name, email, password });
-  // The credits themselves come from the schema default; this records where
-  // they came from, so the account's history starts at its opening balance.
-  await recordSignupGrant(user);
+  await openNewAccount(user);
 
-  const tokens = await issueSession(user, req);
-  return { ...tokens, session: await toSessionPayload(user) };
+  // No session yet. An address nobody has proved they can read is not an
+  // account anybody should be signed in to — the emailed code is that proof,
+  // and `verifyLoginCode` is what turns it into a session.
+  const { code } = await issueLoginCode(user);
+
+  return { verificationRequired: true, email: user.email, devCode: code ?? null };
 }
 
 export async function login({ email, password }, req) {
-  const user = await User.findOne({ email }).select('+passwordHash');
+  // `loginCode.requestedAt` comes along because an unverified account is sent a
+  // code from here — without it the resend cooldown cannot be seen, and every
+  // attempt would mail a fresh code and invalidate the last one.
+  const user = await User.findOne({ email }).select('+passwordHash +loginCode.requestedAt');
 
   // Same error and roughly the same work whether or not the account exists, so
   // the response cannot be used to enumerate registered addresses.
@@ -83,6 +176,20 @@ export async function login({ email, password }, req) {
 
   if (user.status !== 'active') {
     throw ApiError.forbidden('This account is not available');
+  }
+
+  /**
+   * The password was right, and that is exactly why this is not a rejection:
+   * the account exists and belongs to whoever typed it. What is missing is
+   * proof that the address works, so a code goes out and the caller finishes
+   * there. An account that predates verification meets this once.
+   */
+  if (!user.emailVerifiedAt) {
+    await issueLoginCode(user);
+    throw ApiError.forbidden('Check your email for a code to finish signing in.', {
+      code: 'EMAIL_NOT_VERIFIED',
+      details: { email: user.email },
+    });
   }
 
   user.lastLoginAt = new Date();
@@ -141,7 +248,9 @@ export async function signInWithGoogleProfile(profile, req) {
   user.lastLoginAt = new Date();
   await user.save();
 
-  if (isNewAccount) await recordSignupGrant(user);
+  // Google has already proved the address, which is why this route hands back a
+  // session straight away.
+  if (isNewAccount) await openNewAccount(user);
 
   const tokens = await issueSession(user, req);
   return { ...tokens, session: await toSessionPayload(user) };
@@ -276,6 +385,90 @@ export async function requestPasswordReset({ email }) {
   return { delivered };
 }
 
+/**
+ * Emails a one-time sign-in code, creating the account if it is new.
+ *
+ * This is how a partner app registers somebody without holding a secret: it
+ * asks for a code, the reader types it back, and an account exists. Because the
+ * endpoint is public, three things carry the weight — the caller never learns
+ * whether the address was already registered, a per-address cooldown stops the
+ * mailer being used to flood somebody, and the code is stored hashed and burned
+ * after a handful of wrong guesses.
+ */
+export async function requestLoginCode({ email, name }) {
+  let user = await User.findOne({ email }).select('+loginCode.requestedAt');
+  const isNewAccount = !user;
+
+  if (!user) {
+    user = await User.create({ email, name: name?.trim() || nameFromEmail(email) });
+    // Only ever on a brand-new account, so asking for a second code cannot
+    // collect the signup plan twice.
+    await openNewAccount(user);
+  }
+
+  // A suspended account gets no code, and no explanation either.
+  if (user.status !== 'active') return { delivered: false, isNewAccount };
+
+  const { delivered, code } = await issueLoginCode(user);
+  return code ? { delivered, isNewAccount, devCode: code } : { delivered, isNewAccount };
+}
+
+/**
+ * Exchanges a valid code for a session.
+ *
+ * Every failure answers the same way. Telling the caller whether the address
+ * exists, whether a code was ever asked for, or whether this one has expired
+ * would turn a public endpoint into an enumeration tool; "ask for a new one"
+ * covers all of them and is the only useful next step in each case.
+ */
+export async function verifyLoginCode({ email, code }, req) {
+  const user = await User.findOne({ email }).select(
+    '+loginCode.codeHash +loginCode.expiresAt +loginCode.attempts',
+  );
+
+  const rejected = () =>
+    ApiError.unauthorized('That code is not valid. Ask for a new one.', {
+      code: 'INVALID_LOGIN_CODE',
+    });
+
+  const clearCode = async () => {
+    user.loginCode = { codeHash: null, expiresAt: null, attempts: 0, requestedAt: null };
+    await user.save();
+  };
+
+  if (!user?.loginCode?.codeHash || !user.loginCode.expiresAt) throw rejected();
+
+  if (user.loginCode.expiresAt.getTime() < Date.now()) {
+    await clearCode();
+    throw rejected();
+  }
+
+  // Burn the code rather than merely refusing this guess: six digits is a
+  // million combinations, which is walkable inside the lifetime otherwise.
+  if ((user.loginCode.attempts ?? 0) >= env.OTP_MAX_ATTEMPTS) {
+    await clearCode();
+    throw rejected();
+  }
+
+  if (hashToken(code) !== user.loginCode.codeHash) {
+    await User.updateOne({ _id: user._id }, { $inc: { 'loginCode.attempts': 1 } });
+    throw rejected();
+  }
+
+  if (user.status !== 'active') throw ApiError.forbidden('This account is not available');
+
+  user.loginCode = { codeHash: null, expiresAt: null, attempts: 0, requestedAt: null };
+  // Typing a code that only arrived by email proves the address works, which is
+  // exactly what verification means — and what the register and login routes
+  // are waiting for.
+  user.emailVerifiedAt = user.emailVerifiedAt ?? new Date();
+  user.lastLoginAt = new Date();
+  await user.save();
+
+  const tokens = await issueSession(user, req);
+  return { ...tokens, session: await toSessionPayload(user) };
+}
+
 export async function resetPassword({ token, password }) {
   const user = await User.findOne({
     'passwordReset.tokenHash': hashToken(token),
@@ -307,5 +500,7 @@ export default {
   revokeAllSessions,
   requestPasswordReset,
   resetPassword,
+  requestLoginCode,
+  verifyLoginCode,
   toSessionPayload,
 };

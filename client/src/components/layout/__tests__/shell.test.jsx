@@ -76,6 +76,24 @@ describe('Sidebar navigation (Shell B)', () => {
     expect(PRIMARY_NAV.filter((item) => item.arrives)).toEqual([]);
   });
 
+  it('offers the admin screen only to an admin', () => {
+    // The sidebar is drawn for every reader. A row leading to a screen that
+    // refuses them would be worse than no row at all.
+    renderShell();
+    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    expect(within(nav).queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
+
+    useAuthStore.setState({
+      status: 'authenticated',
+      user: { id: '1', name: 'Krishna Yadav', role: 'admin' },
+    });
+    renderShell();
+
+    const navs = screen.getAllByRole('navigation', { name: 'Main navigation' });
+    const adminLink = within(navs.at(-1)).getByRole('link', { name: 'Admin' });
+    expect(adminLink).toHaveAttribute('href', '/admin');
+  });
+
   it('marks the current route as the active destination', () => {
     renderShell(<p>Body</p>, { route: '/agent' });
 

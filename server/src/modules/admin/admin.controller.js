@@ -12,11 +12,29 @@ export const users = asyncHandler(async (req, res) => {
   return sendPaginated(res, { items, page, limit, total, message: 'Users' });
 });
 
+export const userDetail = asyncHandler(async (req, res) =>
+  sendSuccess(res, {
+    data: await service.userDetail(req.validated.params.userId),
+    message: 'Account',
+  }),
+);
+
+export const updateUser = asyncHandler(async (req, res) =>
+  sendSuccess(res, {
+    data: await service.updateUser({
+      userId: req.validated.params.userId,
+      patch: req.validated.body,
+      actor: req.user,
+    }),
+    message: 'Account updated',
+  }),
+);
+
 export const adjustCredits = asyncHandler(async (req, res) =>
   sendSuccess(res, {
     data: await service.adjustUserCredits({
       userId: req.validated.params.userId,
-      actorId: req.user._id,
+      actor: req.user,
       ...req.validated.body,
     }),
     message: 'Credits adjusted',
@@ -27,4 +45,4 @@ export const audit = asyncHandler(async (_req, res) =>
   sendSuccess(res, { data: await service.auditTrail({}), message: 'Audit trail' }),
 );
 
-export default { overview, users, adjustCredits, audit };
+export default { overview, users, userDetail, updateUser, adjustCredits, audit };

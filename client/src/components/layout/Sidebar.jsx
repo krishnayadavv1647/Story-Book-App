@@ -138,6 +138,11 @@ export function Sidebar() {
   const { balance } = useCredits();
 
   const SettingsIcon = SIDEBAR_FOOTER.settings.icon;
+  const AdminIcon = SIDEBAR_FOOTER.admin.icon;
+  // The row is drawn only for an admin. The server refuses the screen and every
+  // request behind it either way; this just stops offering a door that will not
+  // open for the reader looking at it.
+  const isAdmin = user?.role === 'admin';
 
   // Collapse is a desktop-only affordance; on mobile the drawer is always full.
   const collapsed = isDesktop && collapsedPref;
@@ -200,6 +205,20 @@ export function Sidebar() {
         instead. A deliberate deviation, recorded in the design source map.
       */}
       <div className={cn('shrink-0 space-y-2 pb-4 pt-3', gutter)}>
+        {isAdmin && (
+          <FooterCard
+            item={SIDEBAR_FOOTER.admin}
+            onNavigate={closeMobileNav}
+            className={cn(
+              'flex h-11 items-center rounded-lg border border-hairline bg-surface text-base',
+              collapsed ? 'justify-center' : 'pl-2.5',
+            )}
+          >
+            <AdminIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {!collapsed && <span className="ml-[15px]">{SIDEBAR_FOOTER.admin.label}</span>}
+          </FooterCard>
+        )}
+
         <FooterCard
           item={SIDEBAR_FOOTER.settings}
           onNavigate={closeMobileNav}

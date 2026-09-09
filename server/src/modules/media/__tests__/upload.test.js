@@ -28,9 +28,14 @@ afterEach(async () => {
 });
 
 async function signUp(email = 'krishna@example.com') {
-  const res = await request(app)
+  const created = await request(app)
     .post(`${API_PREFIX}/auth/register`)
     .send({ name: 'Krishna Yadav', email, password: 'a-long-enough-passphrase' });
+
+  // Registering no longer signs anyone in — the emailed code does.
+  const res = await request(app)
+    .post(`${API_PREFIX}/auth/otp/verify`)
+    .send({ email, code: created.body.data.devCode });
   return { token: res.body.data.accessToken, userId: res.body.data.user.id };
 }
 

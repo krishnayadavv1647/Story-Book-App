@@ -98,8 +98,16 @@ export const SUBSCRIPTION_STATUS = [
 
 // What moved a balance. The sign of the ledger row's `amount` says which way:
 // a debit is negative, a grant or a refund positive. `admin_adjust` covers both
-// directions because an admin correction can go either way.
-export const CREDIT_ENTRY_TYPES = ['signup_grant', 'debit', 'refund', 'admin_adjust'];
+// directions because an admin correction can go either way; `plan_grant` is the
+// credits that came with a plan, kept separate so "what did this plan give
+// them" is answerable without guessing at a reason string.
+export const CREDIT_ENTRY_TYPES = [
+  'signup_grant',
+  'debit',
+  'refund',
+  'admin_adjust',
+  'plan_grant',
+];
 
 export const MODERATION_STATUS = ['pending', 'approved', 'flagged', 'rejected'];
 export const MODERATION_SUBJECTS = ['prompt', 'story_plan', 'image', 'upload', 'character'];

@@ -61,12 +61,25 @@ function ledgerPage(page) {
   return envelope({ items: rows, total: 3, page, limit: 2 });
 }
 
-function api() {
+const STARTER = {
+  id: 'p1',
+  key: 'starter',
+  name: 'Starter',
+  description: 'A few books a month.',
+  priceCents: 900,
+  currency: 'USD',
+  interval: 'month',
+  creditsGranted: 400,
+  features: ['Watermark-free exports'],
+};
+
+function api({ plans = [STARTER], current = null } = {}) {
   return vi.fn(async (url) => {
     const path = String(url);
     if (path.includes('/credits/history')) {
       return ledgerPage(path.includes('page=2') ? 2 : 1);
     }
+    if (path.includes('/plans')) return envelope({ plans, current });
     if (path.includes('/credits')) return envelope(BALANCE);
     if (path.includes('/auth/session')) {
       return envelope({ user: { id: 'u1', name: 'Krishna Yadav' } });
@@ -128,5 +141,37 @@ describe('the credits screen', () => {
 
     await waitFor(() => expect(screen.getByText('Story plan')).toBeInTheDocument());
     expect(screen.queryByText('Illustration for page 3')).not.toBeInTheDocument();
+  });
+});
+
+describe('plans on the credits screen', () => {
+  it('shows what each plan hands over, and never a buy button', async () => {
+    // There is no checkout, so a button that looked like one would be a lie.
+    vi.stubGlobal('fetch', api());
+    renderCredits();
+
+    expect(await screen.findByText('Starter')).toBeInTheDocument();
+    expect(screen.getByText('Watermark-free exports')).toBeInTheDocument();
+    expect(screen.getByText('400')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /buy|subscribe|upgrade/i })).not.toBeInTheDocument();
+  });
+
+  it('marks the plan the reader is already on', async () => {
+    vi.stubGlobal(
+      'fetch',
+      api({ current: { status: 'active', plan: STARTER, currentPeriodEnd: null } }),
+    );
+    renderCredits();
+
+    expect(await screen.findByText('You are on this plan')).toBeInTheDocument();
+    expect(screen.getByText(/Starter plan/)).toBeInTheDocument();
+  });
+
+  it('draws no plans section when an admin has published none', async () => {
+    vi.stubGlobal('fetch', api({ plans: [] }));
+    renderCredits();
+
+    await screen.findByText('credits left');
+    expect(screen.queryByText('Plans')).not.toBeInTheDocument();
   });
 });

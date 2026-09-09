@@ -5,6 +5,8 @@ import { authLimiter } from '../../middleware/rateLimit.js';
 import * as controller from './auth.controller.js';
 import {
   forgotPasswordSchema,
+  requestLoginCodeSchema,
+  verifyLoginCodeSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
@@ -21,6 +23,27 @@ router.post('/login', authLimiter, validate({ body: loginSchema }), controller.l
 // as an Authorized redirect URI on the OAuth credential.
 router.get('/google', authLimiter, controller.googleStart);
 router.get('/google/callback', controller.googleCallback);
+/**
+ * Sign in with a code emailed to the address — and, for an address nobody has
+ * used before, sign up with one.
+ *
+ * Public by design: another app's browser calls these directly, which is what
+ * lets it register somebody without holding a secret of ours. Both wear the
+ * auth rate limit, which is the only thing between a stranger and our mailer.
+ */
+router.post(
+  '/otp/request',
+  authLimiter,
+  validate({ body: requestLoginCodeSchema }),
+  controller.requestLoginCode,
+);
+router.post(
+  '/otp/verify',
+  authLimiter,
+  validate({ body: verifyLoginCodeSchema }),
+  controller.verifyLoginCode,
+);
+
 router.post('/refresh', controller.refresh);
 router.post('/logout', controller.logout);
 router.get('/session', requireAuth, controller.session);

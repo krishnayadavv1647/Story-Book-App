@@ -138,6 +138,54 @@ export async function refund({ userId, amount, reason = '', refs = {}, idempoten
 }
 
 /**
+ * Hands credits over for a reason that is not a refund — today, the credits
+ * that come with a plan.
+ *
+ * Separate from `adjust` because that one is an admin correcting a number by
+ * hand and may go either way; this one only ever adds, and records WHY through
+ * its `type` so "what did this plan give them" stays answerable later.
+ */
+export async function grant({
+  userId,
+  amount,
+  type = 'plan_grant',
+  reason = '',
+  actorId = null,
+  idempotencyKey = null,
+}) {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw ApiError.badRequest('A grant has to be a positive number of credits.', {
+      code: 'INVALID_GRANT',
+    });
+  }
+
+  const updated = await User.findOneAndUpdate(
+    { _id: userId },
+    { $inc: { credits: amount } },
+    { new: true, projection: { credits: 1 } },
+  );
+  if (!updated) throw ApiError.notFound('Account not found');
+
+  const entry = await record({
+    userId,
+    amount,
+    balanceAfter: updated.credits,
+    type,
+    reason,
+    actorId,
+    idempotencyKey,
+  });
+
+  if (!entry) {
+    // Already granted by another caller; take the duplicate back off.
+    await User.updateOne({ _id: userId }, { $inc: { credits: -amount } });
+    return null;
+  }
+
+  return entry;
+}
+
+/**
  * An admin moving a balance by hand. `amount` is signed: positive tops up,
  * negative corrects downwards, and a downward correction can never push an
  * account below zero.
@@ -187,6 +235,10 @@ export async function adjust({ userId, amount, actorId, reason = '' }) {
  * design — a missing history line is not worth failing a registration over.
  */
 export async function recordSignupGrant(user) {
+  // Nothing was granted, so there is nothing to explain. This is the normal
+  // case when credits arrive through a signup plan instead.
+  if (!(user.credits > 0)) return;
+
   try {
     await record({
       userId: user._id,
@@ -231,6 +283,7 @@ export default {
   getBalance,
   spend,
   refund,
+  grant,
   adjust,
   recordSignupGrant,
   summary,

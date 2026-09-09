@@ -40,10 +40,23 @@ export const useAuthStore = create((set) => ({
     return session;
   },
 
-  async signUp(details) {
-    const session = await authApi.register(details);
+  /**
+   * Finish signing in with an emailed code. Same result as a password sign-in:
+   * the session is installed and the store holds the user.
+   */
+  async signInWithCode(body) {
+    const session = await authApi.verifyLoginCode(body);
     set({ status: 'authenticated', user: session.user });
     return session;
+  },
+
+  /**
+   * Registering creates the account and stops there. Nobody is signed in until
+   * the emailed code is typed back, so this deliberately does not touch the
+   * store — `signInWithCode` is what finishes the job.
+   */
+  async signUp(details) {
+    return authApi.register(details);
   },
 
   /**

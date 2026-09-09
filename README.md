@@ -86,8 +86,110 @@ covers roughly five.
 | Refunds are idempotent | A provider callback and a poll can settle the same failed job at once; the ledger's unique `idempotencyKey` means only one refund lands |
 
 Prices live in `server/src/modules/credits/pricing.js`, sourced from the
-`CREDITS_*` environment settings. There is no billing provider: an admin tops an
-account up with `POST /admin/users/:userId/credits`.
+`CREDITS_*` environment settings. There is no billing provider: credits are
+handed out by an admin, either directly or by putting the account on a plan.
+
+## Signing in with a code, and embedding in another app
+
+**No account is usable until its address is proved.** Registering creates the
+account and emails a code; no session comes back until that code is typed. An
+account that predates the rule meets it once, on its next password sign-in — the
+password is accepted, a code goes out, and the reply is `EMAIL_NOT_VERIFIED`
+rather than a rejection. Sign in with Google is exempt: Google already proved
+the address.
+
+The same two public endpoints let a reader sign in with a code instead of a
+password — and an address nobody has used before gets an account, so they are
+the sign-up path as well. That is what lets another app (a bonus-app bundle,
+say) register somebody from its own screens without holding a secret of ours.
+
+```
+POST /api/v1/auth/otp/request   { email, name? }  -> always the same 200
+POST /api/v1/auth/otp/verify    { email, code }   -> { accessToken, user } + refresh cookie
+```
+
+From the partner app's browser:
+
+```js
+const API = 'https://your-api.example.com/api/v1';
+
+// 1. The reader types their address. An account is created if it is new.
+await fetch(`${API}/auth/otp/request`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ email, name }),
+});
+
+// 2. They type the 6-digit code that arrives. This returns a session.
+const res = await fetch(`${API}/auth/otp/verify`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ email, code }),
+});
+```
+
+Three settings make that work across origins:
+
+| Setting | Why |
+|---|---|
+| `CLIENT_ORIGIN` includes the partner's origin | Otherwise CORS refuses the request |
+| `COOKIE_SAMESITE=none` (and HTTPS on both ends) | The refresh cookie is cross-site here. With it set, opening StoryBook Studio afterwards finds the session already there — which is what makes the reader land signed in |
+| `credentials: 'include'` on every call | The browser sends and stores the refresh cookie only when asked to |
+
+`SIGNUP_PLAN_KEY` names the plan every brand-new account is put on, whichever
+way it signed up, which is how a welcome or bundled-app bonus is delivered: the
+plan's credits land the moment the account exists. `scripts/create-signup-plan.js`
+creates one. Set it and `CREDITS_SIGNUP_GRANT` should usually be 0, or an account
+opens with both.
+
+**Know what this trades away.** The endpoints take no API key, by choice — the
+partner app needs no server of its own. So anyone who can reach them can enter
+an address they control and collect whatever `SIGNUP_PLAN_KEY` grants. The
+auth rate limit, the per-address resend cooldown and the attempt cap on each
+code hold back abuse, not entitlement. Leave `SIGNUP_PLAN_KEY` blank and the
+endpoints are an ordinary passwordless sign-in with nothing to farm.
+
+The code itself is stored hashed, expires in `OTP_CODE_TTL_MINUTES`, and is
+burned after `OTP_MAX_ATTEMPTS` wrong guesses — six digits is a million
+combinations, which is walkable inside ten minutes without that cap. Every reply
+to `/otp/request` is identical whether or not the address is registered, so the
+endpoint cannot be used to find out who has an account.
+
+## Admin
+
+`/admin`, open to an account with the `admin` role and deliberately absent from
+the sidebar. The **first** admin has to be made from outside the app — the only
+screen that can grant the role is behind the role itself:
+
+```bash
+node server/scripts/make-admin.js you@example.com
+```
+
+Four tabs: **Overview** (counts, provider and storage status), **Accounts**,
+**Plans** and **Audit**.
+
+| Action | Notes |
+|---|---|
+| Adjust credits | Signed: add or take away, straight onto the ledger |
+| Assign a plan | Grants the plan's `creditsGranted` and opens a subscription; the previous one is closed first, so at most one is ever live |
+| Suspend / reactivate | Suspending revokes every session immediately, rather than waiting for the access token to expire |
+| Promote / demote | Changes the `admin` role |
+| Create and price plans | Name, price, credits granted, limits, features |
+
+Two guards worth knowing. An admin **cannot change their own role or status** —
+the last admin demoting themselves would be unrecoverable from inside the app.
+And a plan an account is on is **deactivated rather than deleted**, so that
+account's subscription still resolves to something.
+
+Plans are drafted invisibly: `visibleToUsers` is off by default and is a
+separate switch from `isActive`. Readers see only active, visible plans, on
+their Credits screen. `priceCents` is a label — there is no checkout — and the
+`limits` are recorded but not yet enforced anywhere.
+
+Every one of these actions writes an `AuditLog` row, which is what the Audit tab
+reads.
 
 ## Design sources
 

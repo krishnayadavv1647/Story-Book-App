@@ -49,14 +49,22 @@ function clientRedirect(pathAndQuery) {
   return `${base}${pathAndQuery}`;
 }
 
+/**
+ * Registering no longer signs anybody in. The account exists, a code is on its
+ * way, and the next step is `/auth/otp/verify` — which is the same step a
+ * partner app's reader takes, so there is one verification path, not two.
+ */
 export const register = asyncHandler(async (req, res) => {
-  const { accessToken, refreshToken, session } = await authService.register(
-    req.validated.body,
-    req,
-  );
+  const result = await authService.register(req.validated.body);
 
-  setRefreshCookie(res, refreshToken);
-  return sendCreated(res, { data: { accessToken, ...session }, message: 'Account created' });
+  return sendCreated(res, {
+    data: {
+      verificationRequired: true,
+      email: result.email,
+      ...(isProduction ? {} : { devCode: result.devCode ?? null }),
+    },
+    message: 'Check your email for a code to finish signing up.',
+  });
 });
 
 export const login = asyncHandler(async (req, res) => {
@@ -146,6 +154,31 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * The reply never varies: same message, same status, whether the address was
+ * already registered, has just been created, is suspended, or is still inside
+ * its resend cooldown. A public endpoint that answered differently would be a
+ * way to find out who has an account here.
+ */
+export const requestLoginCode = asyncHandler(async (req, res) => {
+  const result = await authService.requestLoginCode(req.validated.body);
+
+  return sendSuccess(res, {
+    data: isProduction ? null : { devCode: result.devCode ?? null },
+    message: 'If that address can receive mail, a sign-in code is on its way.',
+  });
+});
+
+export const verifyLoginCode = asyncHandler(async (req, res) => {
+  const { accessToken, refreshToken, session } = await authService.verifyLoginCode(
+    req.validated.body,
+    req,
+  );
+
+  setRefreshCookie(res, refreshToken);
+  return sendSuccess(res, { data: { accessToken, ...session }, message: 'Signed in' });
+});
+
 export const resetPassword = asyncHandler(async (req, res) => {
   await authService.resetPassword(req.validated.body);
   clearRefreshCookie(res);
@@ -166,4 +199,6 @@ export default {
   session,
   forgotPassword,
   resetPassword,
+  requestLoginCode,
+  verifyLoginCode,
 };

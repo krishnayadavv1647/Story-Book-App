@@ -33,7 +33,10 @@ function jsonResponse(body, { status = 200 } = {}) {
 
 const ok = (data) => jsonResponse({ success: true, data, message: 'OK', meta: {}, error: null });
 const fail = (status, code, message, details = null) =>
-  jsonResponse({ success: false, data: null, message, meta: {}, error: { code, details } }, { status });
+  jsonResponse(
+    { success: false, data: null, message, meta: {}, error: { code, details } },
+    { status },
+  );
 
 const SESSION = {
   accessToken: 'access-token-1',
@@ -121,8 +124,20 @@ describe('sign in', () => {
 });
 
 describe('sign up', () => {
-  it('creates the account and signs in', async () => {
-    vi.stubGlobal('fetch', respondByUrl(ok(SESSION)));
+  it('creates the account, then asks for the emailed code before signing in', async () => {
+    // Registering deliberately hands back no session: the address has to be
+    // proved first, and the code is that proof.
+    const fetchMock = vi.fn(async (url) => {
+      const path = String(url);
+      if (path.includes('/auth/register')) {
+        return ok({ verificationRequired: true, email: 'krishna@example.com' });
+      }
+      if (path.includes('/auth/otp/verify')) return ok(SESSION);
+      if (path.includes('/auth/')) return fail(401, 'UNAUTHENTICATED', 'No session');
+      if (path.includes('/books/summary')) return ok({ total: 0, byStatus: {} });
+      return ok([]);
+    });
+    vi.stubGlobal('fetch', fetchMock);
     renderAt('/sign-up');
 
     await userEvent.type(screen.getByLabelText('Name'), 'Krishna Yadav');
@@ -130,8 +145,17 @@ describe('sign up', () => {
     await userEvent.type(screen.getByLabelText('Password'), 'a-long-enough-passphrase');
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
 
+    // Nobody is signed in yet.
+    expect(await screen.findByText(/Almost there/i)).toBeInTheDocument();
+    expect(useAuthStore.getState().status).not.toBe('authenticated');
+
+    await userEvent.type(screen.getByLabelText('Your code'), '482913');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
     await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
-    expect(fetch.mock.calls[0][0]).toContain('/auth/register');
+    expect(
+      JSON.parse(fetchMock.mock.calls.find(([u]) => String(u).includes('/otp/verify'))[1].body),
+    ).toEqual({ email: 'krishna@example.com', code: '482913' });
   });
 
   it('binds a server validation failure to the field that caused it', async () => {

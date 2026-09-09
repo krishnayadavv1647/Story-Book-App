@@ -53,6 +53,7 @@ function api() {
         },
       });
     }
+    if (path.includes('/admin/plans')) return envelope([]);
     if (path.includes('/admin/audit')) return envelope([]);
     if (path.includes('/credits')) {
       return envelope({ balance: 500, signupGrant: 500, prices: {}, recent: [] });
@@ -65,6 +66,11 @@ const callsTo = (mock, fragment, method) =>
   mock.mock.calls.filter(
     ([url, init]) => String(url).includes(fragment) && (init?.method ?? 'GET') === method,
   );
+
+/** The accounts list lives behind its own tab now. */
+async function openAccounts() {
+  await userEvent.click(await screen.findByRole('tab', { name: 'Accounts' }));
+}
 
 function renderAdmin() {
   return render(
@@ -93,6 +99,7 @@ describe('admin credit adjustments', () => {
   it('shows each account’s balance', async () => {
     vi.stubGlobal('fetch', api());
     renderAdmin();
+    await openAccounts();
 
     expect(await screen.findByText('120')).toBeInTheDocument();
   });
@@ -101,6 +108,7 @@ describe('admin credit adjustments', () => {
     const fetchMock = api();
     vi.stubGlobal('fetch', fetchMock);
     renderAdmin();
+    await openAccounts();
 
     const amount = await screen.findByLabelText('Credits to adjust for reader@example.com');
     await userEvent.type(amount, '500');
@@ -135,6 +143,7 @@ describe('admin credit adjustments', () => {
     const fetchMock = api();
     vi.stubGlobal('fetch', fetchMock);
     renderAdmin();
+    await openAccounts();
 
     const add = await screen.findByRole('button', { name: 'Add' });
     expect(add).toBeDisabled();

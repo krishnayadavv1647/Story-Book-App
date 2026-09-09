@@ -29,6 +29,18 @@ export const requireAuth = asyncHandler(async (req, _res, next) => {
     throw ApiError.unauthorized('Your account is not available');
   }
 
+  /**
+   * Belt and braces. Sessions are only issued once an address is verified, so
+   * this should never fire — except for a session that predates the rule, which
+   * is exactly the case worth closing rather than trusting.
+   */
+  if (!user.emailVerifiedAt) {
+    throw ApiError.forbidden('Verify your email address to continue.', {
+      code: 'EMAIL_NOT_VERIFIED',
+      details: { email: user.email },
+    });
+  }
+
   req.user = user;
   setUserId(String(user._id));
   next();
