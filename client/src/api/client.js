@@ -12,6 +12,27 @@
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
+/**
+ * A path the API handed back, as something the browser can load from anywhere.
+ *
+ * The server returns signed media links relative — `/api/v1/media/…` — which is
+ * correct while the app and the API share an origin. When they do not, the
+ * browser resolves that against the PAGE, so it lands on whatever is serving
+ * the app; a static host answers every unknown path with `index.html`, and the
+ * download saves the app's own HTML under a `.pdf` name. It only fails later,
+ * when somebody opens it and is told the document is broken.
+ *
+ * `VITE_API_BASE_URL` already says where the API is — every other call uses it —
+ * so this puts the path back on the same host. Left alone when the base is
+ * itself relative (same origin) or the URL is already absolute.
+ */
+export function apiUrl(path) {
+  if (!path || /^https?:\/\//i.test(path)) return path;
+  if (BASE_URL.startsWith('/')) return path;
+
+  return new URL(path, new URL(BASE_URL, window.location.origin).origin).toString();
+}
+
 let accessToken = null;
 
 export function setAccessToken(token) {
@@ -154,7 +175,12 @@ export async function apiRequest(path, options = {}) {
     return data;
   } catch (err) {
     const isAuthEndpoint = path.startsWith('/auth/');
-    if (!(err instanceof ApiClientError) || !err.isAuthError || !retryOnUnauthorized || isAuthEndpoint) {
+    if (
+      !(err instanceof ApiClientError) ||
+      !err.isAuthError ||
+      !retryOnUnauthorized ||
+      isAuthEndpoint
+    ) {
       throw err;
     }
 

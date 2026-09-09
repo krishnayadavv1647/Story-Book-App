@@ -198,9 +198,7 @@ describe('access token and silent refresh', () => {
       if (String(url).includes('/auth/refresh')) {
         return jsonResponse(envelope({ accessToken: 'token-2' }));
       }
-      return getAccessToken() === 'token-2'
-        ? jsonResponse(envelope({ ok: true }))
-        : unauthorized();
+      return getAccessToken() === 'token-2' ? jsonResponse(envelope({ ok: true })) : unauthorized();
     });
 
     await Promise.all([api.get('/books'), api.get('/characters'), api.get('/exports')]);
@@ -262,5 +260,48 @@ describe('request construction', () => {
     expect(url).toContain('page=2');
     expect(url).not.toContain('search=');
     expect(url).not.toContain('tag=');
+  });
+});
+
+/**
+ * The API hands back signed media links relative. That is right while the app
+ * and the API share an origin and wrong the moment they do not: the browser
+ * resolves the path against the PAGE, a static host answers every unknown path
+ * with `index.html`, and an export "downloads" as the app's own HTML under a
+ * `.pdf` name — which only fails later, when somebody opens it.
+ */
+describe('apiUrl', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('leaves the path alone when the API shares the app origin', async () => {
+    // `client/.env` sets an absolute base for local development, so the
+    // same-origin case has to be asked for explicitly.
+    vi.stubEnv('VITE_API_BASE_URL', undefined);
+    vi.resetModules();
+    const { apiUrl } = await import('../client.js');
+
+    expect(apiUrl('/api/v1/media/abc?exp=1&sig=x')).toBe('/api/v1/media/abc?exp=1&sig=x');
+  });
+
+  it('puts the path back on the API host when they differ', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com/api/v1');
+    vi.resetModules();
+    const { apiUrl } = await import('../client.js');
+
+    expect(apiUrl('/api/v1/media/abc?exp=1&sig=x')).toBe(
+      'https://api.example.com/api/v1/media/abc?exp=1&sig=x',
+    );
+  });
+
+  it('never rewrites a URL that is already absolute', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com/api/v1');
+    vi.resetModules();
+    const { apiUrl } = await import('../client.js');
+
+    const presigned = 'https://bucket.r2.cloudflarestorage.com/export/x.pdf?X-Amz-Signature=1';
+    expect(apiUrl(presigned)).toBe(presigned);
   });
 });

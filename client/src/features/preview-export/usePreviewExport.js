@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { ApiClientError } from '../../api/client.js';
+import { apiUrl, ApiClientError } from '../../api/client.js';
 import * as exportsApi from '../../api/exports.js';
 import * as booksApi from '../../api/books.js';
 import * as planApi from '../../api/plan.js';
@@ -39,7 +39,9 @@ export const DEFAULT_SETTINGS = {
 export async function saveExport(url, filename) {
   let res;
   try {
-    res = await fetch(url);
+    // The server sends this relative; when the app and the API are on different
+    // hosts, that path has to be put back on the API's before it is fetched.
+    res = await fetch(apiUrl(url));
   } catch {
     throw new Error('The download could not be reached. Check your connection and try again.');
   }
