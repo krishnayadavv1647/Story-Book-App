@@ -63,9 +63,7 @@ export function BookPreviewPage() {
   const SIZE_WIDTH_IN = { '8x8': 8, '8.5x11': 8.5, a4: 8.27 };
   const printCfg = preview.book?.print ?? {};
   const widthIn =
-    printCfg.size === 'custom'
-      ? printCfg.customWidthIn || 8
-      : (SIZE_WIDTH_IN[printCfg.size] ?? 8);
+    printCfg.size === 'custom' ? printCfg.customWidthIn || 8 : (SIZE_WIDTH_IN[printCfg.size] ?? 8);
   const safeFraction = Math.min(0.2, Math.max(0.01, (printCfg.safeMarginIn ?? 0.25) / widthIn));
 
   return (
@@ -153,41 +151,43 @@ export function BookPreviewPage() {
 
       <div className="mt-5 grid gap-5 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1008fr)_minmax(0,442fr)]">
         <div className="h-[70vh] min-h-0 lg:h-auto">
-        <BookPreview
-          pages={preview.pages}
-          view={view}
-          onViewChange={setView}
-          index={index}
-          onIndexChange={setIndex}
-          zoom={zoom}
-          onZoom={setZoom}
-          bleed={bleed}
-          onBleedChange={setBleed}
-          safeFraction={safeFraction}
-        />
+          <BookPreview
+            pages={preview.pages}
+            view={view}
+            onViewChange={setView}
+            index={index}
+            onIndexChange={setIndex}
+            zoom={zoom}
+            onZoom={setZoom}
+            bleed={bleed}
+            onBleedChange={setBleed}
+            safeFraction={safeFraction}
+          />
         </div>
 
         <div className="h-[70vh] min-h-0 lg:h-auto">
-        <ExportPanel
-          settings={preview.settings}
-          onChange={preview.update}
-          pageSizes={preview.pageSizes}
-          filename={preview.filename}
-          estimatedSizeBytes={preview.estimatedSizeBytes}
-          pageCount={preview.pages.length}
-          onExport={() => preview.runExport.mutate()}
-          exporting={preview.runExport.isPending}
-          onPublish={(next) => preview.publish.mutate(next)}
-          publishing={preview.publish.isPending}
-          published={published}
-          result={preview.result}
-          print={preview.book?.print ?? {}}
-          onSavePrint={(patch) => preview.savePrint.mutate(patch)}
-          printCheck={preview.printCheck}
-          printCheckPending={preview.printCheckPending}
-          onPreparePrint={() => preview.preparePrint.mutate()}
-          preparingPrint={preview.preparePrint.isPending}
-        />
+          <ExportPanel
+            settings={preview.settings}
+            onChange={preview.update}
+            pageSizes={preview.pageSizes}
+            filename={preview.filename}
+            estimatedSizeBytes={preview.estimatedSizeBytes}
+            pageCount={preview.pages.length}
+            onExport={() => preview.runExport.mutate()}
+            exporting={preview.runExport.isPending}
+            onPublish={(next) => preview.publish.mutate(next)}
+            publishing={preview.publish.isPending}
+            published={published}
+            result={preview.result}
+            onDownload={(job) => preview.download.mutate(job)}
+            downloading={preview.download.isPending}
+            print={preview.book?.print ?? {}}
+            onSavePrint={(patch) => preview.savePrint.mutate(patch)}
+            printCheck={preview.printCheck}
+            printCheckPending={preview.printCheckPending}
+            onPreparePrint={() => preview.preparePrint.mutate()}
+            preparingPrint={preview.preparePrint.isPending}
+          />
         </div>
       </div>
 

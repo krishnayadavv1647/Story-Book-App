@@ -27,7 +27,12 @@ import { formatBytes } from './usePreviewExport.js';
  */
 const FORMATS = [
   { value: 'pdf', label: 'PDF', hint: 'Best for sharing on screen', icon: FileText },
-  { value: 'print_pdf', label: 'Print-Ready PDF', hint: 'True size, bleed & crop marks', icon: Printer },
+  {
+    value: 'print_pdf',
+    label: 'Print-Ready PDF',
+    hint: 'True size, bleed & crop marks',
+    icon: Printer,
+  },
   { value: 'html', label: 'Flipbook', hint: 'Interactive, turns pages', icon: BookOpen },
   { value: 'png', label: 'Images', hint: 'All pages in one PNG', icon: ImageIcon },
   { value: 'png_pages', label: 'PNG pages', hint: 'Each page, 300 DPI, zipped', icon: Files },
@@ -63,7 +68,9 @@ function FormatCard({ format, active, onSelect }) {
       onClick={() => onSelect(format.value)}
       className={cn(
         'flex flex-col items-center gap-1 rounded-lg border p-3 text-center transition-colors',
-        active ? 'border-hairline-strong bg-teal-soft' : 'border-hairline bg-surface hover:bg-surface-hover',
+        active
+          ? 'border-hairline-strong bg-teal-soft'
+          : 'border-hairline bg-surface hover:bg-surface-hover',
         format.disabled && 'cursor-not-allowed opacity-50 hover:bg-surface',
       )}
     >
@@ -118,7 +125,10 @@ function QualityReport({ report, pending }) {
         {issues.map((issue, at) => (
           <li
             key={`${issue.code}-${at}`}
-            className={cn('rounded-sm border px-2.5 py-1.5 text-2xs leading-snug', ISSUE_TONE[issue.severity])}
+            className={cn(
+              'rounded-sm border px-2.5 py-1.5 text-2xs leading-snug',
+              ISSUE_TONE[issue.severity],
+            )}
           >
             {issue.message}
           </li>
@@ -141,6 +151,8 @@ export function ExportPanel({
   publishing,
   published,
   result,
+  onDownload,
+  downloading,
   print = {},
   onSavePrint,
   printCheck,
@@ -272,30 +284,33 @@ export function ExportPanel({
           </dl>
 
           {result?.downloadUrl && (
-            <a
-              href={result.downloadUrl}
-              download={filename}
-              // The server sends this as an attachment from our own origin, so
-              // the download happens without leaving the page. `rel` is here
-              // because a link that can navigate should never hand the target a
-              // window reference.
-              rel="noopener"
-              // Secondary on purpose. The file has already been saved by the
-              // time this appears — it is the fallback for a browser that
-              // blocked the save, so the gold stays on "Export & Download"
-              // rather than two gold controls competing in one panel.
-              className="flex h-control-xl w-full items-center justify-center gap-2 rounded-lg border border-hairline bg-surface text-base font-semibold text-ink transition-colors hover:border-hairline-strong hover:bg-surface-hover"
+            // A button, not a link: the file is fetched and checked before it is
+            // written to disk, because a link would happily save an expired
+            // link's error page under a .pdf name and only fail when opened.
+            //
+            // Secondary on purpose. The file has already been saved by the time
+            // this appears — it is the fallback for a browser that blocked the
+            // save, so the gold stays on "Export & Download" rather than two
+            // gold controls competing in one panel.
+            <button
+              type="button"
+              onClick={() => onDownload?.(result)}
+              disabled={downloading}
+              className="flex h-control-xl w-full items-center justify-center gap-2 rounded-lg border border-hairline bg-surface text-base font-semibold text-ink transition-colors hover:border-hairline-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Download className="h-4 w-4" aria-hidden="true" />
-              Download {filename}
-            </a>
+              {downloading ? 'Downloading…' : `Download ${filename}`}
+            </button>
           )}
         </TabPanel>
 
         <TabPanel value="print" className="space-y-5 p-4">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Book size">
-              <Select value={print.size ?? '8x8'} onChange={(e) => savePrint({ size: e.target.value })}>
+              <Select
+                value={print.size ?? '8x8'}
+                onChange={(e) => savePrint({ size: e.target.value })}
+              >
                 {PRINT_SIZES.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}

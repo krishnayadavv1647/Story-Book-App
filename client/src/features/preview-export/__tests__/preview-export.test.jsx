@@ -29,7 +29,18 @@ function envelope(data) {
   };
 }
 
-const OK_REPORT = { ok: true, blocking: false, counts: { errors: 0, warnings: 0, info: 1 }, issues: [] };
+const OK_REPORT = {
+  ok: true,
+  blocking: false,
+  counts: { errors: 0, warnings: 0, info: 1 },
+  issues: [],
+};
+
+// jsdom implements neither, and saving a blob needs both.
+beforeEach(() => {
+  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+  URL.revokeObjectURL = vi.fn();
+});
 
 function api({ pages = [page(1), page(2), page(3)], readiness, printReport, overrides = {} } = {}) {
   const state = { status: 'ready' };
@@ -45,6 +56,19 @@ function api({ pages = [page(1), page(2), page(3)], readiness, printReport, over
 
     if (path.includes('/auth/session')) {
       return envelope({ user: { id: 'u1', name: 'Krishna Yadav' } });
+    }
+
+    // The download is a real fetch now: the response is checked before anything
+    // is written to disk, so the test has to answer with a file.
+    if (path.includes('/api/v1/media/')) {
+      return {
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name) => (name.toLowerCase() === 'content-type' ? 'application/pdf' : null),
+        },
+        blob: async () => new Blob(['%PDF-1.3'], { type: 'application/pdf' }),
+      };
     }
 
     if (path.includes('/print-check')) {
@@ -176,8 +200,8 @@ describe('preview and export', () => {
   it('saves the file as soon as the export finishes, without a second click', async () => {
     vi.stubGlobal('fetch', api());
 
-    // The download is started by clicking a temporary link; capture that rather
-    // than letting jsdom try to navigate.
+    // The file is fetched and checked, then saved from a blob — so the proof is
+    // the request for it plus the name the anchor was given.
     const clicked = [];
     const realClick = HTMLAnchorElement.prototype.click;
     HTMLAnchorElement.prototype.click = function capture() {
@@ -190,8 +214,48 @@ describe('preview and export', () => {
       await userEvent.click(screen.getByRole('button', { name: /Export & Download/ }));
 
       await waitFor(() => expect(clicked).toHaveLength(1));
-      expect(clicked[0].href).toContain('/api/v1/media/export-1');
+      expect(fetch.mock.calls.some(([url]) => String(url).includes('/api/v1/media/export-1'))).toBe(
+        true,
+      );
+      expect(clicked[0].href).toBe('blob:mock-url');
       expect(clicked[0].download).toBe('Aarav.pdf');
+    } finally {
+      HTMLAnchorElement.prototype.click = realClick;
+    }
+  });
+
+  it('refuses to save a download that did not come back as a file', async () => {
+    // The bug this guards: an expired signed link answers with JSON, and a dev
+    // server whose API is restarting answers with the app's own index.html.
+    // Saving either under a .pdf name only fails later, when it is opened.
+    vi.stubGlobal(
+      'fetch',
+      api({
+        overrides: {
+          '/api/v1/media/': () => ({
+            ok: false,
+            status: 403,
+            headers: { get: () => 'application/json' },
+            blob: async () => new Blob(['{}']),
+          }),
+        },
+      }),
+    );
+
+    const clicked = [];
+    const realClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function capture() {
+      clicked.push(this.getAttribute('download'));
+    };
+
+    try {
+      renderPreview();
+      await screen.findByRole('heading', { name: 'Preview & Export Your Book' });
+      await userEvent.click(screen.getByRole('button', { name: /Export & Download/ }));
+
+      expect(await screen.findByText(/link has expired/i)).toBeInTheDocument();
+      // Nothing was written to disk under a name that promises a PDF.
+      expect(clicked).toHaveLength(0);
     } finally {
       HTMLAnchorElement.prototype.click = realClick;
     }
@@ -204,7 +268,7 @@ describe('preview and export', () => {
     await screen.findByRole('heading', { name: 'Preview & Export Your Book' });
     await userEvent.click(screen.getByRole('button', { name: /Export & Download/ }));
 
-    expect(await screen.findByRole('link', { name: /Download Aarav.pdf/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Download Aarav.pdf/ })).toBeInTheDocument();
   });
 
   it('sends the chosen settings and offers the finished file', async () => {
@@ -226,9 +290,10 @@ describe('preview and export', () => {
     expect(sent.options.pageSize).toBe('8x10in');
     expect(sent.options.bleedMm).toBe(3);
 
-    // The file is offered as a download, not just announced.
-    const link = await screen.findByRole('link', { name: /Download Aarav.png/ });
-    expect(link).toHaveAttribute('href', expect.stringContaining('/api/v1/media/export-1'));
+    // The file is offered as a download, not just announced. It is a button
+    // rather than a link because the response is checked before it is saved.
+    const save = await screen.findByRole('button', { name: /Download Aarav.png/ });
+    expect(save).toBeEnabled();
   });
 
   it('does not offer EPUB as though it worked', async () => {
@@ -291,7 +356,11 @@ describe('preview and export', () => {
       blocking: true,
       counts: { errors: 1, warnings: 0, info: 0 },
       issues: [
-        { severity: 'error', code: 'MISSING_MEDIA', message: 'Page 2: its illustration file is missing.' },
+        {
+          severity: 'error',
+          code: 'MISSING_MEDIA',
+          message: 'Page 2: its illustration file is missing.',
+        },
       ],
     };
     vi.stubGlobal('fetch', api({ printReport: report }));
@@ -316,8 +385,16 @@ describe('preview and export', () => {
       blocking: false,
       counts: { errors: 0, warnings: 2, info: 0 },
       issues: [
-        { severity: 'warning', code: 'MISSING_TITLE_PAGE', message: 'This book has no title page.' },
-        { severity: 'warning', code: 'MISSING_ENDING_PAGE', message: 'This book has no ending page.' },
+        {
+          severity: 'warning',
+          code: 'MISSING_TITLE_PAGE',
+          message: 'This book has no title page.',
+        },
+        {
+          severity: 'warning',
+          code: 'MISSING_ENDING_PAGE',
+          message: 'This book has no ending page.',
+        },
       ],
     };
     const fetchMock = api({ printReport: report });
@@ -328,9 +405,7 @@ describe('preview and export', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Print' }));
     await userEvent.click(await screen.findByRole('button', { name: /Add the missing title/i }));
 
-    await waitFor(() =>
-      expect(callsTo(fetchMock, '/pages/prepare-print', 'POST')).toHaveLength(1),
-    );
+    await waitFor(() => expect(callsTo(fetchMock, '/pages/prepare-print', 'POST')).toHaveLength(1));
   });
 
   it('exports the interactive flipbook as an .html download', async () => {
@@ -348,8 +423,8 @@ describe('preview and export', () => {
     const sent = JSON.parse(callsTo(fetchMock, '/books/book-1/export', 'POST')[0][1].body);
     expect(sent.format).toBe('html');
 
-    const link = await screen.findByRole('link', { name: /Download Aarav\.html/ });
-    expect(link).toHaveAttribute('href', expect.stringContaining('/api/v1/media/export-1'));
+    const save = await screen.findByRole('button', { name: /Download Aarav\.html/ });
+    expect(save).toBeEnabled();
   });
 
   it('overlays the safe-area guide when print guides are turned on', async () => {

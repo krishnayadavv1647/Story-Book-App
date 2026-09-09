@@ -27,22 +27,46 @@ export const DEFAULT_SETTINGS = {
 };
 
 /**
- * Saves a file without leaving the page.
+ * Saves an export to disk.
  *
- * The server sends the export from our own origin as an attachment, so a plain
- * click is enough — the `download` attribute is honoured only same-origin,
- * which is exactly why a direct bucket URL navigated away instead of saving.
+ * Fetched first, rather than pointing a link at the URL, because a link saves
+ * whatever comes back. A signed media link expires, and an expired one answers
+ * with JSON — as does a dev server whose API is restarting, which answers with
+ * the app's own `index.html`. Either lands on disk named `.pdf` and fails only
+ * later, when the reader opens it and is told the document is broken. Checking
+ * the response here turns that into a sentence they can act on.
  */
-export function startDownload(url, filename) {
+export async function saveExport(url, filename) {
+  let res;
+  try {
+    res = await fetch(url);
+  } catch {
+    throw new Error('The download could not be reached. Check your connection and try again.');
+  }
+
+  const type = res.headers.get('content-type') ?? '';
+
+  if (res.status === 403) {
+    throw new Error('That download link has expired. Export it again to get a fresh one.');
+  }
+  if (!res.ok || type.includes('application/json') || type.includes('text/html')) {
+    throw new Error('The download did not come back as a file. Please try again.');
+  }
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+
   const link = document.createElement('a');
-  link.href = url;
-  link.download = filename ?? '';
+  link.href = objectUrl;
+  // A blob URL is same-origin, so the name is honoured whatever the API's host.
+  link.download = filename || 'storybook';
   link.rel = 'noopener';
   link.style.display = 'none';
 
   document.body.appendChild(link);
   link.click();
   link.remove();
+  URL.revokeObjectURL(objectUrl);
 }
 
 /** Bytes as something a person reads, for the file summary. */
@@ -109,7 +133,13 @@ export function usePreviewExport(bookId) {
       // it. The link stays on screen afterwards, for a browser that blocked
       // this or a download they want again.
       const suggested = options.data?.filename?.[settings.format];
-      if (job?.downloadUrl) startDownload(job.downloadUrl, suggested);
+      if (job?.downloadUrl) {
+        // The link is seconds old here, so this is the one case that needs no
+        // re-signing — but it can still come back as something other than the
+        // file, and the reader has to hear about that rather than find out
+        // later from a viewer.
+        await saveExport(job.downloadUrl, suggested).catch((err) => setError(err.message));
+      }
 
       await queryClient.invalidateQueries({ queryKey: previewKeys.exports(bookId) });
       await useAuthStore.getState().refreshSession();
@@ -144,6 +174,29 @@ export function usePreviewExport(bookId) {
     onError: (err) => setError(describe(err)),
   });
 
+  /**
+   * Downloading an export from the history list.
+   *
+   * The job is re-read first: a signed media link outlives its usefulness in
+   * minutes, and the one sitting on screen may have been signed long before
+   * anybody clicked it. Asking for the job again costs one request and hands
+   * back a fresh signature, which is cheaper than explaining an expiry.
+   */
+  const download = useMutation({
+    mutationFn: async (job) => {
+      const id = job?._id ?? job?.id;
+      const fresh = id ? await exportsApi.fetchExport(id) : job;
+
+      if (!fresh?.downloadUrl) {
+        throw new Error('This export is no longer available. Export it again.');
+      }
+
+      return saveExport(fresh.downloadUrl, options.data?.filename?.[fresh.format]);
+    },
+    onMutate: () => setError(null),
+    onError: (err) => setError(err.message ?? describe(err)),
+  });
+
   const preparePrint = useMutation({
     mutationFn: () => exportsApi.preparePrint(bookId),
     onMutate: () => setError(null),
@@ -176,6 +229,7 @@ export function usePreviewExport(bookId) {
     settings,
     update,
     runExport,
+    download,
     publish,
     printCheck: printCheckQuery.data ?? null,
     printCheckPending: printCheckQuery.isPending,
