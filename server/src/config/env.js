@@ -119,12 +119,23 @@ const schema = z.object({
   COOKIE_SAMESITE: z.enum(['lax', 'none', 'strict']).default('lax'),
   BCRYPT_ROUNDS: int(12),
 
-  // Encrypts users' own provider API keys (BYOK) at rest. Optional: when unset,
-  // `secretBox` derives its key from COOKIE_SECRET (always present), so a deploy
-  // works without an extra variable. Set a dedicated value (>=32 chars) to keep
-  // the encryption key separate from cookie signing — then rotating it only
-  // invalidates stored keys (users re-enter them), nothing else.
-  APIKEY_ENC_SECRET: str(''),
+  /**
+   * Credits — what generation costs and what a new account opens with.
+   *
+   * Every account starts on CREDITS_SIGNUP_GRANT and pays the prices below out
+   * of it. They are settings rather than constants so pricing can be changed
+   * for a deploy without a code change; existing balances are untouched by a
+   * change here, and history keeps the price that was actually charged.
+   *
+   * A worked example at the defaults: a 12-page book costs 10 for the plan,
+   * 5 × 14 for its pages and two covers, and 5 per character designed — about
+   * 90 credits, so an opening balance covers roughly five books.
+   */
+  CREDITS_SIGNUP_GRANT: int(500),
+  CREDITS_STORY_PLAN: int(10),
+  CREDITS_IMAGE: int(5),
+  CREDITS_CHARACTER: int(5),
+  CREDITS_CHAT: int(1),
 
   // Sign in with Google — server-side Authorization Code flow. All three live
   // here, on the server, and never in the client:
@@ -237,7 +248,6 @@ export const SERVER_ONLY_SECRET_KEYS = Object.freeze([
   'JWT_ACCESS_SECRET',
   'JWT_REFRESH_SECRET',
   'COOKIE_SECRET',
-  'APIKEY_ENC_SECRET',
   'MONGODB_URI',
   'GEMINI_API_KEY',
   'KIE_API_KEY',

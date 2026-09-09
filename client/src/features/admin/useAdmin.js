@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as adminApi from '../../api/admin.js';
 
 export const adminKeys = {
@@ -19,7 +19,16 @@ export function useAdmin() {
   });
   const audit = useQuery({ queryKey: adminKeys.audit(), queryFn: adminApi.fetchAudit });
 
+  const queryClient = useQueryClient();
+  const adjustCredits = useMutation({
+    mutationFn: ({ userId, amount, reason }) =>
+      adminApi.adjustUserCredits(userId, { amount, reason }),
+    // The list shows the balance, so it has to hear about the change.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
+  });
+
   return {
+    adjustCredits,
     overview: overview.data ?? null,
     users: users.data?.items ?? [],
     audit: audit.data ?? [],

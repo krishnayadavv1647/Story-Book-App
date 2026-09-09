@@ -97,11 +97,11 @@ export function useCharacterImage({ onFinished } = {}) {
 
 function describe(err) {
   if (!(err instanceof ApiClientError)) return 'Something went wrong. Please try again.';
-  if (err.code === 'KIE_KEY_MISSING' || err.code === 'KIE_NOT_CONFIGURED') {
-    return 'Add your Kie.ai API key in Settings to generate illustrations.';
+  if (err.code === 'KIE_NOT_CONFIGURED') {
+    return 'Illustration is not set up on this server yet.';
   }
   if (err.code === 'KIE_UNAUTHORIZED') {
-    return 'Your Kie.ai API key was rejected. Check it in Settings.';
+    return 'Illustration is unavailable right now — the provider rejected our key.';
   }
   if (['NO_APPEARANCE', 'CONTENT_BLOCKED', 'TOO_MANY_REFERENCES'].includes(err.code)) {
     return err.message;

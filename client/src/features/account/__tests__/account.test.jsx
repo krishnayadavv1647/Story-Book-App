@@ -75,7 +75,15 @@ function api({ overrides = {}, notifications = NOTIFICATIONS } = {}) {
         email: 'krishna@example.com',
         role: 'user',
         preferences: { theme: 'light', emailNotifications: true },
-        apiKeys: { gemini: false, kie: false },
+        credits: 420,
+      });
+    }
+    if (path.includes('/credits')) {
+      return envelope({
+        balance: 420,
+        signupGrant: 500,
+        prices: { story_plan: 10, page_image: 5, character_image: 5, story_chat: 1 },
+        recent: [],
       });
     }
     if (path.includes('/auth/session')) {
@@ -172,33 +180,17 @@ describe('settings', () => {
     await waitFor(() => expect(callsTo(fetchMock, '/auth/session').length).toBeGreaterThan(0));
   });
 
-  it('saves the user’s own Gemini API key (BYOK)', async () => {
-    const fetchMock = api({
-      overrides: {
-        '/users/me/api-keys': (method, body) => {
-          expect(method).toBe('PUT');
-          return envelope({
-            id: 'u1',
-            name: 'Krishna Yadav',
-            email: 'krishna@example.com',
-            role: 'user',
-            preferences: { theme: 'light', emailNotifications: true },
-            apiKeys: { gemini: Boolean(body.gemini), kie: false },
-          });
-        },
-      },
-    });
-    vi.stubGlobal('fetch', fetchMock);
+  it('shows the credit balance and never offers to store a provider key', async () => {
+    // Generation runs on the server's own keys now, so there is nothing here to
+    // paste one into — what the screen owes the user instead is their balance.
+    vi.stubGlobal('fetch', api());
     renderAt('/settings');
 
-    const geminiInput = await screen.findByLabelText('Google Gemini API key');
-    await userEvent.type(geminiInput, 'AIza-a-real-looking-gemini-key');
-    await userEvent.click(screen.getByRole('button', { name: 'Save Google Gemini API key' }));
-
-    await waitFor(() => expect(callsTo(fetchMock, '/users/me/api-keys', 'PUT')).toHaveLength(1));
-    expect(JSON.parse(callsTo(fetchMock, '/users/me/api-keys', 'PUT')[0][1].body)).toEqual({
-      gemini: 'AIza-a-real-looking-gemini-key',
-    });
+    expect(await screen.findByText('credits left')).toBeInTheDocument();
+    // Twice: the sidebar row carries the balance as well as the card.
+    expect(screen.getAllByText('420')).toHaveLength(2);
+    expect(screen.getByRole('link', { name: /went on/i })).toHaveAttribute('href', '/credits');
+    expect(screen.queryByLabelText(/API key/i)).not.toBeInTheDocument();
   });
 
   it('will not submit a password change without both fields', async () => {

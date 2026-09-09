@@ -6,6 +6,7 @@ import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
 import { isMailConfigured, sendMail } from '../../providers/email/mailer.js';
 import { passwordResetEmail } from '../../providers/email/templates.js';
+import { recordSignupGrant } from '../credits/credits.service.js';
 import { ApiError } from '../../utils/ApiError.js';
 import {
   durationToMs,
@@ -46,6 +47,7 @@ export async function toSessionPayload(user) {
       email: user.email,
       role: user.role,
       avatarUrl: user.avatarUrl,
+      credits: user.credits ?? 0,
       emailVerified: Boolean(user.emailVerifiedAt),
       preferences: user.preferences,
     },
@@ -61,6 +63,9 @@ export async function register({ name, email, password }, req) {
   }
 
   const user = await User.create({ name, email, password });
+  // The credits themselves come from the schema default; this records where
+  // they came from, so the account's history starts at its opening balance.
+  await recordSignupGrant(user);
 
   const tokens = await issueSession(user, req);
   return { ...tokens, session: await toSessionPayload(user) };
@@ -130,8 +135,13 @@ export async function signInWithGoogleProfile(profile, req) {
     throw ApiError.forbidden('This account is not available');
   }
 
+  // Read before the save, which is what turns a new document into a stored one.
+  const isNewAccount = user.isNew;
+
   user.lastLoginAt = new Date();
   await user.save();
+
+  if (isNewAccount) await recordSignupGrant(user);
 
   const tokens = await issueSession(user, req);
   return { ...tokens, session: await toSessionPayload(user) };

@@ -2,17 +2,24 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import { AppShell, StickyActionBar, PageHeader } from '../index.js';
+import { createQueryClient } from '../../../lib/queryClient.js';
 import { useAuthStore } from '../../../store/authStore.js';
 import { useUiStore } from '../../../store/uiStore.js';
 import { PRIMARY_NAV } from '../../../config/navigation.js';
 
+// The sidebar reads the credit balance, so the shell needs a query client the
+// same way the real app gives it one. Nothing here stubs the request: the row
+// simply shows no balance until one arrives, which is the state under test.
 function renderShell(ui = <p>Body</p>, { route = '/' } = {}) {
   return render(
-    <MemoryRouter initialEntries={[route]}>
-      <AppShell>{ui}</AppShell>
-    </MemoryRouter>,
+    <QueryClientProvider client={createQueryClient()}>
+      <MemoryRouter initialEntries={[route]}>
+        <AppShell>{ui}</AppShell>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -61,6 +68,8 @@ describe('Sidebar navigation (Shell B)', () => {
       // No "Character Design" row either — removed at the user's request; its
       // route still resolves, but the sidebar no longer offers it.
       'Published Books',
+      // Restored with the credit system: the row carries the live balance.
+      'Credits',
     ]);
 
     // And every one of them goes somewhere.

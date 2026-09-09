@@ -4,6 +4,7 @@ export { User } from './User.js';
 export { RefreshToken } from './RefreshToken.js';
 export { Plan } from './Plan.js';
 export { Subscription } from './Subscription.js';
+export { CreditLedger } from './CreditLedger.js';
 export { Book } from './Book.js';
 export { BookPage } from './BookPage.js';
 export { Character } from './Character.js';
@@ -26,6 +27,7 @@ export const MODEL_NAMES = Object.freeze([
   'RefreshToken',
   'Plan',
   'Subscription',
+  'CreditLedger',
   'Book',
   'BookPage',
   'Character',

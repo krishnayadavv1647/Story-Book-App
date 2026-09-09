@@ -388,7 +388,9 @@ describe('illustrating a character', () => {
     await waitFor(() => expect(screen.getByLabelText('Character Name')).toHaveValue('Aarav'));
     await userEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/API key in Settings/i);
+    // The server's own key is missing, so the copy names the server — there is
+    // nothing the reader could go and fix.
+    expect(await screen.findByRole('alert')).toHaveTextContent(/not set up on this server/i);
   });
 });
 

@@ -17,6 +17,7 @@ import BookReaderPage from '../pages/BookReaderPage.jsx';
 import MyBooksPage from '../pages/MyBooksPage.jsx';
 import NotificationsPage from '../pages/NotificationsPage.jsx';
 import SettingsPage from '../pages/SettingsPage.jsx';
+import CreditsPage from '../pages/CreditsPage.jsx';
 import CharacterLibraryPage from '../pages/CharacterLibraryPage.jsx';
 import AdminPage from '../pages/AdminPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
@@ -164,6 +165,15 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <NotificationsPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/credits"
+        element={
+          <RequireAuth>
+            <CreditsPage />
           </RequireAuth>
         }
       />

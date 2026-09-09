@@ -1,4 +1,4 @@
-import { BookOpen, Image as ImageIcon } from 'lucide-react';
+import { BookOpen, Coins, Image as ImageIcon } from 'lucide-react';
 import { Avatar, Callout, Card, CardHeader, StatusBadge } from '../../components/common/index.js';
 
 /**
@@ -68,6 +68,14 @@ export function PlanSummary({ book, pages, characters, estimate }) {
               <ImageIcon className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
               {estimate.illustrations} illustrations including covers
             </li>
+            {/* What it will cost, before it is spent — a price found out
+                afterwards is a bill, not an estimate. */}
+            {estimate.credits && (
+              <li className="flex items-center gap-3">
+                <Coins className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
+                {estimate.credits.total} credits to finish it
+              </li>
+            )}
           </ul>
 
           <Callout className="mt-4">You can edit every page after generation.</Callout>

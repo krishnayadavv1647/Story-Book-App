@@ -48,14 +48,19 @@ const userSchema = new mongoose.Schema(
       requestedAt: { type: Date, default: null, select: false },
     },
 
-    // The user's own provider API keys (BYOK), each stored ENCRYPTED (a
-    // `secretBox` envelope), never plaintext. `select: false` per leaf so a hash
-    // must be asked for explicitly, and `toJSON` strips the whole subdoc — the
-    // client only ever learns whether a key is set, never its value.
-    apiKeys: {
-      gemini: { type: String, default: null, select: false },
-      kie: { type: String, default: null, select: false },
-    },
+    /**
+     * What is left to spend on generation.
+     *
+     * The running total, and the only figure read on the hot path — every
+     * movement is also written to the CreditLedger, which is where a balance is
+     * explained rather than merely stated. A new account opens on
+     * CREDITS_SIGNUP_GRANT.
+     *
+     * `min: 0` is a backstop, not the guard: spending is a conditional update
+     * that refuses to match an account without the balance for it, so two
+     * requests arriving together can never both take the last credit.
+     */
+    credits: { type: Number, default: () => env.CREDITS_SIGNUP_GRANT, min: 0 },
   },
   {
     timestamps: true,
@@ -63,7 +68,6 @@ const userSchema = new mongoose.Schema(
       virtuals: true,
       transform(_doc, ret) {
         delete ret.passwordHash;
-        delete ret.apiKeys;
         delete ret.__v;
         return ret;
       },

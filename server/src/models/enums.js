@@ -96,6 +96,11 @@ export const SUBSCRIPTION_STATUS = [
   'expired',
 ];
 
+// What moved a balance. The sign of the ledger row's `amount` says which way:
+// a debit is negative, a grant or a refund positive. `admin_adjust` covers both
+// directions because an admin correction can go either way.
+export const CREDIT_ENTRY_TYPES = ['signup_grant', 'debit', 'refund', 'admin_adjust'];
+
 export const MODERATION_STATUS = ['pending', 'approved', 'flagged', 'rejected'];
 export const MODERATION_SUBJECTS = ['prompt', 'story_plan', 'image', 'upload', 'character'];
 
@@ -131,6 +136,7 @@ export default {
   MEDIA_KINDS,
   MEDIA_STATUS,
   SUBSCRIPTION_STATUS,
+  CREDIT_ENTRY_TYPES,
   MODERATION_STATUS,
   MODERATION_SUBJECTS,
   NOTIFICATION_TYPES,

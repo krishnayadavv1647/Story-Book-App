@@ -10,6 +10,7 @@ import mediaRoutes from '../modules/media/media.routes.js';
 import exportRoutes from '../modules/exports/exports.routes.js';
 import notificationRoutes from '../modules/notifications/notifications.routes.js';
 import userRoutes from '../modules/users/users.routes.js';
+import creditRoutes from '../modules/credits/credits.routes.js';
 import adminRoutes from '../modules/admin/admin.routes.js';
 
 /**
@@ -30,6 +31,7 @@ router.use('/media', mediaRoutes);
 router.use('/exports', exportRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/users', userRoutes);
+router.use('/credits', creditRoutes);
 router.use('/admin', adminRoutes);
 
 

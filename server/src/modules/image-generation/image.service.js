@@ -17,7 +17,7 @@ import { kieImageProvider } from '../../providers/kie/KieImageProvider.js';
 import { ingestRemoteImage, resolveAssetUrl } from '../../providers/storage/index.js';
 import { screenPrompt } from '../story-generation/moderation.js';
 import { addReference } from '../characters/characters.service.js';
-import { getUserApiKeys, requireUserApiKey } from '../users/users.service.js';
+import { chargeJob, refundJob } from '../credits/jobCredits.js';
 import { BOOK_COVER_PROMPT, POSES, characterPrompt, coverPrompt, pagePrompt } from './prompts.js';
 
 /**
@@ -46,9 +46,6 @@ const MEDIA_KIND_BY_JOB = {
 export async function requestCharacterImage({ user, characterId, pose = 'front', bookId = null, signal }) {
   const character = await Character.findOne({ _id: characterId, ownerId: user._id });
   if (!character) throw ApiError.notFound('Character not found');
-
-  // BYOK: the user's own Kie.ai key. Fail before screening/job/credit work.
-  const apiKey = await requireUserApiKey(user._id, 'kie');
 
   const prompt = characterPrompt(character, pose);
 
@@ -111,6 +108,10 @@ export async function requestCharacterImage({ user, characterId, pose = 'front',
     },
   );
 
+  // Paid for before the provider is called; `failJob` gives it back if the
+  // illustration never arrives.
+  await chargeJob({ job, reason: `Character illustration: ${character.name}` });
+
   try {
     const referenceUrls = await referenceUrlsFor(character);
 
@@ -122,7 +123,6 @@ export async function requestCharacterImage({ user, characterId, pose = 'front',
       referenceUrls,
       jobId: job._id,
       signal,
-      apiKey,
     });
 
     await GenerationJob.updateOne(
@@ -165,6 +165,12 @@ async function referenceUrlsFor(character) {
 async function failJob(jobId, err) {
   const job = await GenerationJob.findById(jobId);
   if (!job || ['succeeded', 'failed', 'cancelled'].includes(job.status)) return;
+
+  // Every image failure arrives here — a provider error, a rejected task, an
+  // image that could not be stored — so this is the one place a refund belongs.
+  // The terminal-status check above is what stops a job being refunded twice.
+  await refundJob(job, 'Illustration failed');
+
   await GenerationJob.updateOne(
     { _id: jobId },
     {
@@ -484,9 +490,7 @@ export async function pollOnce(jobId) {
 
   await GenerationJob.updateOne({ _id: jobId }, { $inc: { pollAttempts: 1 } });
 
-  // Detached from any request: resolve the owner's own Kie key to poll with.
-  const { kie: apiKey } = await getUserApiKeys(job.ownerId);
-  const normalized = await kieImageProvider.getTaskStatus(job.externalTaskId, { apiKey });
+  const normalized = await kieImageProvider.getTaskStatus(job.externalTaskId);
 
   if (!normalized.isTerminal) {
     await GenerationJob.updateOne({ _id: jobId }, { $set: { progress: normalized.progress ?? 0 } });
@@ -531,9 +535,7 @@ export async function handleCallback({ token, body }) {
   stopPolling(jobId);
 
   const job = await GenerationJob.findById(jobId);
-  // The callback route is unauthenticated: resolve the owner's Kie key by job.
-  const { kie: apiKey } = await getUserApiKeys(job.ownerId);
-  const normalized = await kieImageProvider.getTaskStatus(job.externalTaskId, { apiKey });
+  const normalized = await kieImageProvider.getTaskStatus(job.externalTaskId);
   const result = await settleJob(jobId, normalized);
 
   return { accepted: true, ...result };
@@ -554,6 +556,7 @@ export async function cancelImageJob({ user, jobId }) {
     { _id: jobId },
     { $set: { status: 'cancelled', cancelledAt: new Date(), completedAt: new Date() } },
   );
+  await refundJob(job, 'Cancelled before it finished');
 
   return { status: 'cancelled', alreadyFinished: false, upstreamCancelled: false };
 }
@@ -592,7 +595,6 @@ export async function requestPageImage({ user, book, pageId, signal }) {
   const page = await BookPage.findOne({ _id: pageId, bookId: book._id });
   if (!page) throw ApiError.notFound('Page not found');
 
-  const apiKey = await requireUserApiKey(user._id, 'kie');
 
   const cast = await Character.find({ _id: { $in: page.characterIds ?? [] } });
   const prompt = pagePrompt({ page, cast, book });
@@ -651,6 +653,8 @@ export async function requestPageImage({ user, book, pageId, signal }) {
   );
   await BookPage.updateOne({ _id: page._id }, { $set: { status: 'queued', lastError: null } });
 
+  await chargeJob({ job, reason: `Illustration for page ${page.order}` });
+
   try {
     const { externalTaskId } = await kieImageProvider.createTask({
       prompt,
@@ -660,7 +664,6 @@ export async function requestPageImage({ user, book, pageId, signal }) {
       referenceUrls: await referenceUrlsForCast(cast),
       jobId: job._id,
       signal,
-      apiKey,
     });
 
     await GenerationJob.updateOne(
@@ -894,7 +897,6 @@ async function ensureCoverPromptVersion() {
  * and a failed cover must never mark the book itself as failed.
  */
 export async function requestBookCover({ user, book, signal }) {
-  const apiKey = await requireUserApiKey(user._id, 'kie');
 
   const cast = await Character.find({ _id: { $in: book.characterIds ?? [] } });
   const prompt = coverPrompt({ book, cast });
@@ -955,6 +957,8 @@ export async function requestBookCover({ user, book, signal }) {
     },
   );
 
+  await chargeJob({ job, reason: 'Book cover' });
+
   try {
     const { externalTaskId } = await kieImageProvider.createTask({
       prompt,
@@ -964,7 +968,6 @@ export async function requestBookCover({ user, book, signal }) {
       referenceUrls: await referenceUrlsForCast(cast),
       jobId: job._id,
       signal,
-      apiKey,
     });
 
     await GenerationJob.updateOne(

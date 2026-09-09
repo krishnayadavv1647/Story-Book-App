@@ -4,6 +4,7 @@ import { cn } from '../../lib/cn.js';
 import { useIsDesktop } from '../../lib/useMediaQuery.js';
 import { useUiStore } from '../../store/uiStore.js';
 import { useAuthStore } from '../../store/authStore.js';
+import { useCredits } from '../../features/credits/useCredits.js';
 import { Avatar } from '../common/Avatar.jsx';
 import { IconButton } from '../common/IconButton.jsx';
 import { PRIMARY_NAV, SIDEBAR_FOOTER } from '../../config/navigation.js';
@@ -84,7 +85,7 @@ function FooterCard({ item, className, children, onNavigate }) {
   );
 }
 
-function NavRow({ item, collapsed, height = 'h-[37px]', onNavigate }) {
+function NavRow({ item, collapsed, height = 'h-[37px]', onNavigate, badge = null }) {
   const Icon = item.icon;
 
   if (item.arrives) return <UnbuiltRow item={item} collapsed={collapsed} height={height} />;
@@ -111,7 +112,14 @@ function NavRow({ item, collapsed, height = 'h-[37px]', onNavigate }) {
         }
       >
         <Icon className="h-[15px] w-[15px] shrink-0" aria-hidden="true" />
-        {!collapsed && <span className="ml-[15px] truncate">{item.label}</span>}
+        {!collapsed && (
+          <>
+            <span className="ml-[15px] truncate">{item.label}</span>
+            {badge !== null && (
+              <span className="ml-auto mr-2 shrink-0 text-sm tabular-nums opacity-80">{badge}</span>
+            )}
+          </>
+        )}
       </NavLink>
     </li>
   );
@@ -125,6 +133,9 @@ export function Sidebar() {
   const isDesktop = useIsDesktop();
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
+  // The balance is the point of the Credits row: a number you have to open a
+  // screen to see is a number nobody checks until they run out.
+  const { balance } = useCredits();
 
   const SettingsIcon = SIDEBAR_FOOTER.settings.icon;
 
@@ -170,7 +181,13 @@ export function Sidebar() {
       <div className={cn('mt-[30px] min-h-0 flex-1 overflow-y-auto', gutter)}>
         <ul>
           {PRIMARY_NAV.map((item) => (
-            <NavRow key={item.key} item={item} collapsed={collapsed} onNavigate={closeMobileNav} />
+            <NavRow
+              key={item.key}
+              item={item}
+              collapsed={collapsed}
+              onNavigate={closeMobileNav}
+              badge={item.key === 'credits' && balance !== null ? balance : null}
+            />
           ))}
         </ul>
 

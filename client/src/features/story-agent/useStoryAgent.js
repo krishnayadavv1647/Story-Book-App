@@ -88,16 +88,21 @@ function describe(err) {
     if (err.code === 'STORY_PLAN_INVALID') {
       return 'The planner could not produce a usable plan. Try rewording the idea.';
     }
-    // BYOK: the user needs to add their own key in Settings.
-    if (err.code === 'GEMINI_KEY_MISSING' || err.code === 'GEMINI_NOT_CONFIGURED') {
-      return 'Add your Google Gemini API key in Settings to generate stories.';
+    // Generation runs on the server's provider keys, so these are ours to fix,
+    // not the reader's — the copy says so rather than sending them somewhere
+    // they can do nothing.
+    if (err.code === 'GEMINI_NOT_CONFIGURED') {
+      return 'Story generation is not set up on this server yet.';
     }
-    if (err.code === 'KIE_KEY_MISSING' || err.code === 'KIE_NOT_CONFIGURED') {
-      return 'Add your Kie.ai API key in Settings to generate illustrations.';
+    if (err.code === 'KIE_NOT_CONFIGURED') {
+      return 'Illustration is not set up on this server yet.';
     }
     if (err.code === 'GEMINI_UNAUTHORIZED' || err.code === 'KIE_UNAUTHORIZED') {
-      return 'Your API key was rejected. Check it in Settings.';
+      return 'Generation is unavailable right now — the provider rejected our key.';
     }
+    // The server's own message names both numbers: what this needs, and what is
+    // left. Nothing here can say it better.
+    if (err.code === 'INSUFFICIENT_CREDITS') return err.message;
     if (err.code === 'JOB_IN_PROGRESS') return 'That story is already being planned.';
     return err.message;
   }

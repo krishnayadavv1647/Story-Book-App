@@ -1,8 +1,17 @@
-import { QueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryClient } from '@tanstack/react-query';
 import { ApiClientError } from '../api/client.js';
 
 export function createQueryClient() {
-  return new QueryClient({
+  const client = new QueryClient({
+    /**
+     * Any mutation might have spent credits — planning a story, illustrating a
+     * page, rewriting one. Invalidating the balance here rather than at each of
+     * those call sites means the sidebar cannot drift out of date because the
+     * next paid action forgot to say so.
+     */
+    mutationCache: new MutationCache({
+      onSuccess: () => client.invalidateQueries({ queryKey: ['credits'] }),
+    }),
     defaultOptions: {
       queries: {
         staleTime: 30_000,
@@ -24,6 +33,8 @@ export function createQueryClient() {
       },
     },
   });
+
+  return client;
 }
 
 export const queryClient = createQueryClient();

@@ -8,7 +8,9 @@ import { geminiStoryProvider } from '../../providers/gemini/GeminiStoryProvider.
 import { STORY_PLAN_PROMPT } from '../../providers/gemini/prompts.js';
 import { STORY_PLAN_JSON_SCHEMA } from '../../providers/gemini/storyPlan.schema.js';
 import { screenPlan, screenPrompt } from './moderation.js';
-import { requireUserApiKey } from '../users/users.service.js';
+import { chargeJob, refundJob } from '../credits/jobCredits.js';
+import { priceOf } from '../credits/pricing.js';
+import * as credits from '../credits/credits.service.js';
 
 /**
  * Records the prompt template that produced a job, so a regression can be traced
@@ -191,9 +193,6 @@ async function persistPlan({ ownerId, plan, sourcePrompt, promptVersionId, job, 
 export async function generateStoryPlan({ user, prompt, settings = {}, requestId, signal }) {
   const ownerId = user._id;
 
-  // BYOK: fail before any screening/credit/job work if the user has no key.
-  const apiKey = await requireUserApiKey(ownerId, 'gemini');
-
   const screening = await screenPrompt({ ownerId, prompt, requestId });
   if (!screening.allowed) {
     throw ApiError.badRequest(
@@ -243,16 +242,20 @@ export async function generateStoryPlan({ user, prompt, settings = {}, requestId
     { $set: { status: 'processing', startedAt: new Date() }, $inc: { attempts: 1 } },
   );
 
+  // Paid for before the provider is called, and given back below if nothing
+  // usable comes out of it.
+  await chargeJob({ job, reason: 'Story plan' });
+
   try {
     const { plan, meta } = await geminiStoryProvider.generateStoryPlan({
       prompt,
       settings,
       signal,
-      apiKey,
     });
 
     const planScreening = await screenPlan({ ownerId, plan, requestId });
     if (!planScreening.allowed) {
+      await refundJob(await GenerationJob.findById(job._id), 'Story plan discarded by review');
       await GenerationJob.updateOne(
         { _id: job._id },
         {
@@ -302,6 +305,9 @@ export async function generateStoryPlan({ user, prompt, settings = {}, requestId
     return { bookId: book._id, jobId: job._id, plan, meta, reused: false };
   } catch (err) {
     if (err?.code !== 'CONTENT_BLOCKED') {
+      // Nothing was delivered, so nothing is owed. The blocked case has already
+      // refunded itself above.
+      await refundJob(await GenerationJob.findById(job._id), 'Story plan failed');
       await GenerationJob.updateOne(
         { _id: job._id },
         {
@@ -339,9 +345,6 @@ export async function regeneratePlan({ user, book, requestId, signal }) {
       code: 'NO_SOURCE_PROMPT',
     });
   }
-
-  // BYOK: the user's own Gemini key drives the regeneration.
-  const apiKey = await requireUserApiKey(user._id, 'gemini');
 
   const settings = {
     ageGroup: book.ageGroup,
@@ -385,8 +388,10 @@ export async function regeneratePlan({ user, book, requestId, signal }) {
       refs: { bookId: book._id },
     }));
 
+  await chargeJob({ job, reason: 'Story plan regenerated' });
+
   try {
-    const { plan } = await geminiStoryProvider.generateStoryPlan({ prompt, settings, signal, apiKey });
+    const { plan } = await geminiStoryProvider.generateStoryPlan({ prompt, settings, signal });
 
     const screening = await screenPlan({ ownerId: user._id, plan, requestId });
     if (!screening.allowed) {
@@ -405,6 +410,7 @@ export async function regeneratePlan({ user, book, requestId, signal }) {
 
     return { bookId: book._id, jobId: job._id };
   } catch (err) {
+    await refundJob(await GenerationJob.findById(job._id), 'Regeneration failed');
     await GenerationJob.updateOne(
       { _id: job._id },
       {
@@ -529,8 +535,6 @@ async function replacePlan({ book, plan, promptVersionId }) {
 export async function chat({ user, messages, requestId, signal }) {
   const last = [...messages].reverse().find((message) => message.role === 'user');
 
-  const apiKey = await requireUserApiKey(user._id, 'gemini');
-
   const screening = await screenPrompt({ ownerId: user._id, prompt: last?.content ?? '', requestId });
   if (!screening.allowed) {
     throw ApiError.badRequest('That is not something this assistant can help with.', {
@@ -538,8 +542,26 @@ export async function chat({ user, messages, requestId, signal }) {
     });
   }
 
-  const { text, meta } = await geminiStoryProvider.chat({ messages, signal, apiKey });
-  return { message: { role: 'assistant', content: text }, meta };
+  // A chat turn finishes inside this request, so there is no job to hang the
+  // charge on — the ledger entry itself is what a refund is keyed to.
+  const charge = await credits.spend({
+    userId: user._id,
+    amount: priceOf('story_chat'),
+    reason: 'Story assistant reply',
+  });
+
+  try {
+    const { text, meta } = await geminiStoryProvider.chat({ messages, signal });
+    return { message: { role: 'assistant', content: text }, meta, credits: charge.balance };
+  } catch (err) {
+    await credits.refund({
+      userId: user._id,
+      amount: charge.charged,
+      reason: 'Story assistant reply failed',
+      idempotencyKey: `refund:${charge.entryId}`,
+    });
+    throw err;
+  }
 }
 
 /**
@@ -559,9 +581,30 @@ export async function rewritePage({ user, book, pageId, instruction, signal }) {
     });
   }
 
-  const apiKey = await requireUserApiKey(user._id, 'gemini');
+  const charge = await credits.spend({
+    userId: user._id,
+    amount: priceOf('page_rewrite'),
+    reason: 'Page rewritten',
+    refs: { bookId: book._id, pageId: page._id },
+  });
 
-  const result = await geminiStoryProvider.rewritePage({ book, page, instruction, signal, apiKey });
+  /** Nothing usable came back, so the charge goes back too. */
+  const giveBack = (reason) =>
+    credits.refund({
+      userId: user._id,
+      amount: charge.charged,
+      reason,
+      refs: { bookId: book._id, pageId: page._id },
+      idempotencyKey: `refund:${charge.entryId}`,
+    });
+
+  let result;
+  try {
+    result = await geminiStoryProvider.rewritePage({ book, page, instruction, signal });
+  } catch (err) {
+    await giveBack('Rewrite failed');
+    throw err;
+  }
 
   const screening = await screenPrompt({
     ownerId: user._id,
@@ -569,6 +612,7 @@ export async function rewritePage({ user, book, pageId, instruction, signal }) {
   });
 
   if (!screening.allowed) {
+    await giveBack('Rewrite discarded by review');
     throw ApiError.badRequest('That rewrite could not be used. Try a different instruction.', {
       code: 'CONTENT_BLOCKED',
     });
@@ -605,6 +649,7 @@ export async function cancelJob({ user, jobId }) {
     { _id: job._id },
     { $set: { status: 'cancelled', cancelledAt: new Date(), completedAt: new Date() } },
   );
+  await refundJob(job, 'Cancelled before it finished');
 
   return { status: 'cancelled', alreadyFinished: false };
 }

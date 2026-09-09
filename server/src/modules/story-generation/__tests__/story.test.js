@@ -14,7 +14,6 @@ import {
   User,
 } from '../../../models/index.js';
 import { STORY_PLAN_PROMPT } from '../../../providers/gemini/prompts.js';
-import { encryptSecret } from '../../../utils/secretBox.js';
 
 let mongod;
 let app;
@@ -43,16 +42,6 @@ async function signUp(email = 'krishna@example.com') {
     .post(`${API_PREFIX}/auth/register`)
     .send({ name: 'Krishna Yadav', email, password: 'a-long-enough-passphrase' });
   const userId = res.body.data.user.id;
-  // BYOK: generation now uses the user's own keys, so seed them for the suite.
-  await User.updateOne(
-    { _id: userId },
-    {
-      $set: {
-        'apiKeys.gemini': encryptSecret('user-gemini-key'),
-        'apiKeys.kie': encryptSecret('user-kie-key'),
-      },
-    },
-  );
   return { token: res.body.data.accessToken, userId };
 }
 
@@ -156,19 +145,36 @@ describe('POST /story/plan', () => {
     expect(res.status).toBe(401);
   });
 
-  it('refuses to generate when the user has not set their Gemini key', async () => {
-    // Register directly, bypassing the key-seeding `signUp` helper.
-    const account = await request(app)
-      .post(`${API_PREFIX}/auth/register`)
-      .send({ name: 'No Keys', email: 'nokeys@example.com', password: 'a-long-enough-passphrase' });
-    const token = account.body.data.accessToken;
+  it('refuses to generate when the balance will not cover it', async () => {
+    const { token, userId } = await signUp();
+    await User.updateOne({ _id: userId }, { $set: { credits: 1 } });
+    stubGemini([{ plan: validPlan({ pageCount: 3 }) }]);
 
     const res = await generate(token);
 
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('GEMINI_KEY_MISSING');
-    // It fails before any book, job, or model call.
+    expect(res.status).toBe(402);
+    expect(res.body.error.code).toBe('INSUFFICIENT_CREDITS');
+    expect(res.body.error.details).toMatchObject({ available: 1 });
+    // Nothing was spent and nothing was written.
+    expect((await User.findById(userId)).credits).toBe(1);
     expect(await Book.countDocuments()).toBe(0);
+  });
+
+  it('charges for the plan and gives it back when generation fails', async () => {
+    const { token, userId } = await signUp();
+    const opening = (await User.findById(userId)).credits;
+
+    stubGemini([{ plan: validPlan({ pageCount: 3 }) }]);
+    await generate(token);
+    const afterSuccess = (await User.findById(userId)).credits;
+    expect(afterSuccess).toBeLessThan(opening);
+
+    // A second, different idea that the provider refuses outright.
+    stubGemini([{ httpStatus: 500 }]);
+    await generate(token, { prompt: 'A lighthouse keeper who finds a door in the sea.' });
+
+    // Charged, then refunded — so the failure left the balance where it was.
+    expect((await User.findById(userId)).credits).toBe(afterSuccess);
   });
 
   it('generates a plan and persists the book, its pages and its cast', async () => {

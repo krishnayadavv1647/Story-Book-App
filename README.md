@@ -24,7 +24,8 @@ and nothing to clean up — the data disappears when you stop it. Use `npm run d
 with a real `MONGODB_URI` when you want persistence.
 
 Without `GEMINI_API_KEY` and `KIE_API_KEY` the app runs but story planning and
-illustration report that they are not configured. Object storage falls back to an
+illustration report that they are not configured — they are the server's keys,
+and users pay for generation in credits (see below). Object storage falls back to an
 in-memory store when `STORAGE_BUCKET` is unset, so generated images work locally
 without an S3 or R2 account.
 
@@ -68,6 +69,25 @@ only**. Vite
 inlines every `VITE_*` value into the browser bundle, so no secret may ever use
 that prefix. `tests/contract/no-secret-leak.test.js` asserts this against both
 the source tree and the built bundle.
+
+## Credits
+
+Generation runs on the **server's** provider keys, and users pay for it in
+credits rather than bringing keys of their own. Every account opens on
+`CREDITS_SIGNUP_GRANT` (500) and is charged before the provider is called —
+about 90 credits for a 12-page book at the default prices, so an opening balance
+covers roughly five.
+
+| Rule | Why |
+|---|---|
+| Spend first, refund on failure | A user pays for work they receive. Every failure path — a provider error, a rejected image, a plan discarded by the safety review, a cancelled job — gives the credits back |
+| Spending is a conditional update | `credits: { $gte: amount }` in the query, not a read-then-write, so two requests arriving together cannot both take the last credit |
+| Every movement leaves a ledger row | `User.credits` is the running total; `CreditLedger` is why it is that number. An account's rows sum to its balance |
+| Refunds are idempotent | A provider callback and a poll can settle the same failed job at once; the ledger's unique `idempotencyKey` means only one refund lands |
+
+Prices live in `server/src/modules/credits/pricing.js`, sourced from the
+`CREDITS_*` environment settings. There is no billing provider: an admin tops an
+account up with `POST /admin/users/:userId/credits`.
 
 ## Design sources
 
@@ -115,6 +135,7 @@ npm start              # server on PORT
 | Point `MONGODB_URI` at a **replica set** | Credit debits and job transitions run in transactions; a standalone server silently degrades to unwrapped writes |
 | Set `STORAGE_BUCKET` and its keys | Without one the app falls back to an in-memory store that is lost on restart |
 | Set `GEMINI_API_KEY` and `KIE_API_KEY` | Without them planning and illustration return a clear "not configured" error |
+| On an EXISTING database, run `node server/scripts/backfill-credits.js` | Accounts created before credits existed have no `credits` field, and spending is a conditional update that cannot match a missing one — without this they can sign in but never generate |
 | Set `RESEND_API_KEY` and `MAIL_FROM` | The password-reset link is emailed through Resend. Without them nothing is sent, and a user who forgets their password has no way back in. `MAIL_FROM` must use a domain verified in the Resend account |
 | Set `PUBLIC_URL` | Kie.ai callbacks are delivered to it; without it the app falls back to polling |
 | Set `CORS_ORIGIN` to the client's origin | The refresh cookie is `SameSite` and scoped to `/api/v1/auth` |

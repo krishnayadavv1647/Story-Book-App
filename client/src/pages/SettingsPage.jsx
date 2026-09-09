@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Check, KeyRound, Save } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Coins, KeyRound, Save } from 'lucide-react';
 
 import { AppShell, PageHeader } from '../components/layout/index.js';
 import {
@@ -12,53 +13,7 @@ import {
   Switch,
 } from '../components/common/index.js';
 import { useProfile } from '../features/account/useAccount.js';
-
-/**
- * One provider's key: a password input to set or replace it, plus a saved-state
- * line with a Remove action once one is stored. The value itself is never shown
- * back — the server only ever reports whether a key is set.
- */
-function ApiKeyRow({ label, hint, isSet, value, onChange, onSave, onClear, saving }) {
-  return (
-    <div>
-      <Field label={label} hint={hint}>
-        <div className="flex gap-2">
-          <Input
-            type="password"
-            className="flex-1"
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={isSet ? 'Enter a new key to replace the saved one' : 'Paste your key'}
-            autoComplete="off"
-          />
-          <Button
-            variant="primary"
-            aria-label={`Save ${label}`}
-            disabled={!value.trim() || saving}
-            onClick={onSave}
-          >
-            Save
-          </Button>
-        </div>
-      </Field>
-      {isSet && (
-        <div className="mt-1.5 flex items-center gap-3 text-xs">
-          <span className="inline-flex items-center gap-1.5 text-success">
-            <Check className="h-3.5 w-3.5" aria-hidden="true" /> Key saved
-          </span>
-          <button
-            type="button"
-            className="text-ink-muted underline hover:text-ink"
-            onClick={onClear}
-            disabled={saving}
-          >
-            Remove
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
+import { useCredits } from '../features/credits/useCredits.js';
 
 /**
  * SYSTEM-DERIVED. No frame covers account settings.
@@ -72,8 +27,7 @@ export function SettingsPage() {
   const [name, setName] = useState('');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
-  const [kieKey, setKieKey] = useState('');
+  const credits = useCredits();
 
   useEffect(() => {
     if (account.profile?.name) setName(account.profile.name);
@@ -189,42 +143,27 @@ export function SettingsPage() {
 
         <Card className="p-5">
           <div className="flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-gold" aria-hidden="true" />
-            <h2 className="text-base font-semibold text-ink">Your API keys</h2>
+            <Coins className="h-4 w-4 text-gold" aria-hidden="true" />
+            <h2 className="text-base font-semibold text-ink">Credits</h2>
           </div>
           <p className="mt-1 text-sm text-ink-muted">
-            Books are generated with your own provider keys — nothing runs on the app&apos;s account.
-            Keys are encrypted and never shown again after you save them.
+            Writing and illustrating are paid for in credits. Work that fails is refunded, so you
+            only pay for what you get.
           </p>
 
-          <div className="mt-4 space-y-5">
-            <ApiKeyRow
-              label="Google Gemini API key"
-              hint="Writes the story. Create one free at aistudio.google.com/app/apikey."
-              isSet={Boolean(account.profile?.apiKeys?.gemini)}
-              value={geminiKey}
-              onChange={setGeminiKey}
-              saving={account.apiKeys.isPending}
-              onSave={() =>
-                account.apiKeys.mutate(
-                  { gemini: geminiKey.trim() },
-                  { onSuccess: () => setGeminiKey('') },
-                )
-              }
-              onClear={() => account.apiKeys.mutate({ gemini: '' })}
-            />
-            <ApiKeyRow
-              label="Kie.ai API key"
-              hint="Generates the illustrations. From your Kie.ai dashboard."
-              isSet={Boolean(account.profile?.apiKeys?.kie)}
-              value={kieKey}
-              onChange={setKieKey}
-              saving={account.apiKeys.isPending}
-              onSave={() =>
-                account.apiKeys.mutate({ kie: kieKey.trim() }, { onSuccess: () => setKieKey('') })
-              }
-              onClear={() => account.apiKeys.mutate({ kie: '' })}
-            />
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+            <span>
+              <span className="block text-2xl font-semibold text-ink">
+                {credits.isPending ? '—' : credits.balance}
+              </span>
+              <span className="block text-xs text-ink-muted">credits left</span>
+            </span>
+            <Link
+              to="/credits"
+              className="text-sm font-semibold text-gold underline-offset-4 hover:underline"
+            >
+              See what they went on
+            </Link>
           </div>
         </Card>
 

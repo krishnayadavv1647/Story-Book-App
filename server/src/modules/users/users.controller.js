@@ -20,11 +20,4 @@ export const changePassword = asyncHandler(async (req, res) =>
   }),
 );
 
-export const setApiKeys = asyncHandler(async (req, res) =>
-  sendSuccess(res, {
-    data: await service.setApiKeys({ user: req.user, patch: req.validated.body }),
-    message: 'API keys updated',
-  }),
-);
-
-export default { me, update, changePassword, setApiKeys };
+export default { me, update, changePassword };

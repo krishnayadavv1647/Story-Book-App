@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 
 import { AppShell } from '../components/layout/index.js';
@@ -142,27 +142,19 @@ export function StoryAgentPage() {
         </Callout>
       )}
 
-      {/* Only prompt on a definite "not configured" — an unexpected or partial
-          payload must not take the whole screen down. Both engines run on the
-          user's OWN keys (BYOK), so this is an actionable link to add them, not
-          a dead-end warning. */}
+      {/* Only warn on a definite "not configured" — an unexpected or partial
+          payload must not take the whole screen down. The engines run on the
+          SERVER's keys, so there is nothing the reader can do about this; the
+          copy says what is unavailable rather than offering a dead-end link. */}
       {(engines.data?.writer?.configured === false ||
         engines.data?.image?.configured === false) && (
         <Callout tone="warning" className="mb-3">
-          <span className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <span>
-              {engines.data?.writer?.configured === false &&
-              engines.data?.image?.configured === false
-                ? 'Add your Gemini and Kie.ai API keys to generate a book.'
-                : engines.data?.writer?.configured === false
-                  ? 'Add your Google Gemini API key to write stories.'
-                  : 'Add your Kie.ai API key to generate illustrations.'}{' '}
-              Books are made with your own keys.
-            </span>
-            <Link to="/settings" className="font-semibold text-ink underline hover:no-underline">
-              Add key in Settings →
-            </Link>
-          </span>
+          {engines.data?.writer?.configured === false &&
+          engines.data?.image?.configured === false
+            ? 'Story generation and illustration are not set up on this server yet.'
+            : engines.data?.writer?.configured === false
+              ? 'Story generation is not set up on this server yet.'
+              : 'Illustration is not set up on this server yet.'}
         </Callout>
       )}
     </>

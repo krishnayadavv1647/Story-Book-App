@@ -1,4 +1,4 @@
-import { BookMarked, BookOpen, Compass, Settings, SquarePen } from 'lucide-react';
+import { BookMarked, BookOpen, Coins, Compass, Settings, SquarePen } from 'lucide-react';
 
 /**
  * The sidebar, measured from Figma `H98QB4Tdo6iH2EaXCerUlv` frame 1:2 and
@@ -23,6 +23,10 @@ export const PRIMARY_NAV = [
   { key: 'create', label: 'Create Storybook', icon: SquarePen, path: '/agent' },
   { key: 'my-books', label: 'My Books', icon: BookOpen, path: '/books' },
   { key: 'published', label: 'Published Books', icon: BookMarked, path: '/published' },
+  // Restored at the user's request (2026-09-09) along with the credit system.
+  // The row carries the live balance, which is the whole reason it earns a
+  // place in the navigation rather than living only inside Settings.
+  { key: 'credits', label: 'Credits', icon: Coins, path: '/credits' },
 ];
 
 /*
@@ -72,19 +76,13 @@ export const PRIMARY_NAV = [
  */
 
 /*
- * Removed at the user's request (2026-09-03): the "Credits" row, along with the
- * whole credit system. Nothing is charged for any more, so there is no balance
- * to show and no ledger to read.
- */
-/*
  * Removed at the user's request (2026-09-05): the "Notifications" footer row.
  * The `/notifications` route still resolves, so a bookmark or an old link keeps
  * working, but nothing in the sidebar points at it any more.
  */
 export const SIDEBAR_FOOTER = {
-  // Account settings — including each user's own API keys (BYOK). Added here
-  // because the app had no way in to `/settings` at all; the route existed but
-  // nothing pointed at it.
+  // Account settings. Added here because the app had no way in to `/settings`
+  // at all; the route existed but nothing pointed at it.
   settings: { key: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
 };
 

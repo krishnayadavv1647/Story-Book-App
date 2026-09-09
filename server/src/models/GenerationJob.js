@@ -57,6 +57,15 @@ const generationJobSchema = new mongoose.Schema(
     resultJson: { type: mongoose.Schema.Types.Mixed, default: null },
 
     cost: {
+      // What the user paid for this job, and the ledger row that took it. The
+      // row's id is what a refund is keyed on, so a failure settled twice — by
+      // a callback and a poll at once — still gives the credits back once.
+      credits: { type: Number, default: 0, min: 0 },
+      creditsEntryId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CreditLedger',
+        default: null,
+      },
       providerCostMicros: { type: Number, default: 0 },
       inputTokens: { type: Number, default: 0 },
       outputTokens: { type: Number, default: 0 },

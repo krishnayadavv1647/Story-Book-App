@@ -7,6 +7,8 @@ import {
   User,
 } from '../../models/index.js';
 import { env } from '../../config/env.js';
+import { ApiError } from '../../utils/ApiError.js';
+import * as creditsService from '../credits/credits.service.js';
 
 /**
  * The operational picture: is the app working, and what is it costing.
@@ -59,7 +61,7 @@ export async function listUsers({ page = 1, limit = 25, search }) {
 
   const [items, total] = await Promise.all([
     User.find(filter)
-      .select('name email role status createdAt emailVerifiedAt')
+      .select('name email role status credits createdAt emailVerifiedAt')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -70,8 +72,23 @@ export async function listUsers({ page = 1, limit = 25, search }) {
   return { items, total };
 }
 
+/**
+ * Moves one account's credit balance by hand.
+ *
+ * The only way credits are handed out after signup — there is no billing yet —
+ * so it is deliberately an admin action, written to the same ledger as every
+ * automatic movement and stamped with who did it.
+ */
+export async function adjustUserCredits({ userId, amount, reason, actorId }) {
+  const user = await User.findById(userId).select('name email').lean();
+  if (!user) throw ApiError.notFound('Account not found');
+
+  const result = await creditsService.adjust({ userId, amount, actorId, reason });
+  return { user: { id: String(userId), name: user.name, email: user.email }, ...result };
+}
+
 export async function auditTrail({ limit = 50 }) {
   return AuditLog.find({}).sort({ createdAt: -1 }).limit(limit).lean();
 }
 
-export default { overview, listUsers, auditTrail };
+export default { overview, listUsers, adjustUserCredits, auditTrail };

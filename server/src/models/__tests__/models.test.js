@@ -42,8 +42,8 @@ function hasIndex(indexes, key) {
 }
 
 describe('model registry', () => {
-  it('registers all 17 declared models', () => {
-    expect(MODEL_NAMES).toHaveLength(17);
+  it('registers all 18 declared models', () => {
+    expect(MODEL_NAMES).toHaveLength(18);
     for (const name of MODEL_NAMES) {
       expect(() => mongoose.model(name)).not.toThrow();
     }

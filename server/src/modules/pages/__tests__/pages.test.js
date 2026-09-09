@@ -30,11 +30,6 @@ async function signUp(email = 'krishna@example.com') {
     .post(`${API_PREFIX}/auth/register`)
     .send({ name: 'Krishna Yadav', email, password: 'a-long-enough-passphrase' });
   const token = res.body.data.accessToken;
-  // BYOK: the page rewrite uses the user's own Gemini key.
-  await request(app)
-    .put(`${API_PREFIX}/users/me/api-keys`)
-    .set('Authorization', `Bearer ${token}`)
-    .send({ gemini: 'user-gemini-key', kie: 'user-kie-key' });
   return { token, userId: res.body.data.user.id };
 }
 

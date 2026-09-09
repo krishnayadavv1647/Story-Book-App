@@ -7,6 +7,7 @@ import {
   MediaAsset,
 } from '../../models/index.js';
 import { withTransaction } from '../../config/db.js';
+import { estimateBookCredits } from '../credits/pricing.js';
 import { resolveAssetUrl } from '../../providers/storage/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { addPage } from '../pages/pages.service.js';
@@ -61,9 +62,12 @@ export async function summariseLibrary(ownerId) {
 }
 
 /**
- * How much work generating this book is: illustrations are every page plus a
- * front and back cover, and each unillustrated character needs a design pass of
- * its own. It used to price that too, back when generating cost credits.
+ * How much work finishing this book is, and what it will cost.
+ *
+ * Illustrations are every page plus a front and back cover, and each character
+ * that is not `ready` still needs a design pass of its own. Only outstanding
+ * work is counted, so the quote falls as the book gets made rather than
+ * restating the whole price every time.
  */
 export function estimateGeneration({ pageCount, characters }) {
   const illustrations = pageCount + 2;
@@ -73,6 +77,7 @@ export function estimateGeneration({ pageCount, characters }) {
     storyPages: pageCount,
     illustrations,
     charactersToDesign: pending,
+    credits: estimateBookCredits({ illustrations, charactersToDesign: pending }),
   };
 }
 

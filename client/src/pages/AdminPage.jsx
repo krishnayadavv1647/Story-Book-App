@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Activity, ShieldCheck } from 'lucide-react';
+import { Activity, Coins, ShieldCheck } from 'lucide-react';
 
 import { AppShell, PageHeader } from '../components/layout/index.js';
 import {
@@ -12,6 +13,49 @@ import {
 } from '../components/common/index.js';
 import { useAdmin } from '../features/admin/useAdmin.js';
 import { useAuthStore } from '../store/authStore.js';
+
+/**
+ * One account's balance, and the only way to change it.
+ *
+ * There is no billing provider, so a top-up is an operator action. The amount is
+ * signed on the wire — the two buttons are just which sign to send — and the
+ * server refuses to push an account below zero.
+ */
+function CreditControl({ user, adjust }) {
+  const [amount, setAmount] = useState('');
+  const value = Number.parseInt(amount, 10);
+  const valid = Number.isInteger(value) && value > 0;
+  const busy = adjust.isPending && adjust.variables?.userId === user._id;
+
+  const send = (sign) =>
+    adjust.mutate(
+      { userId: user._id, amount: sign * value, reason: 'Adjusted by an admin' },
+      { onSuccess: () => setAmount('') },
+    );
+
+  return (
+    <span className="flex items-center gap-2">
+      <span className="inline-flex items-center gap-1.5 text-sm text-ink-muted">
+        <Coins className="h-4 w-4" aria-hidden="true" />
+        <span className="tabular-nums text-ink">{user.credits ?? 0}</span>
+      </span>
+      <Input
+        aria-label={`Credits to adjust for ${user.email}`}
+        className="w-20"
+        inputMode="numeric"
+        placeholder="0"
+        value={amount}
+        onChange={(event) => setAmount(event.target.value)}
+      />
+      <Button size="sm" disabled={!valid || busy} onClick={() => send(1)}>
+        Add
+      </Button>
+      <Button size="sm" disabled={!valid || busy} onClick={() => send(-1)}>
+        Take
+      </Button>
+    </span>
+  );
+}
 
 /**
  * SYSTEM-DERIVED, and deliberately not in the sidebar — the approved frames draw
@@ -124,13 +168,15 @@ export function AdminPage() {
         ) : (
           <ul className="mt-4 divide-y divide-hairline rounded-lg border border-hairline bg-surface">
             {admin.users.map((user) => (
-              <li key={user._id} className="flex items-center gap-3 px-4 py-3">
+              <li key={user._id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-ink">{user.name}</span>
                   <span className="block truncate text-xs text-ink-muted">{user.email}</span>
                 </span>
 
                 {user.role === 'admin' && <StatusBadge tone="neutral">Admin</StatusBadge>}
+
+                <CreditControl user={user} adjust={admin.adjustCredits} />
               </li>
             ))}
           </ul>
