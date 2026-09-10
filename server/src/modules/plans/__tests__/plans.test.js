@@ -161,6 +161,23 @@ describe('assigning a plan', () => {
     expect((await User.findById(userId)).credits).toBe(env.CREDITS_SIGNUP_GRANT + 400 + 1000);
   });
 
+  it('can put an account on a plan without granting its credits again', async () => {
+    // For accounts that opened on the flat signup grant before the signup plan
+    // was switched on: they already hold what the plan gives.
+    const { token: adminToken } = await signUp('admin@example.com', { admin: true });
+    const plan = (await createPlan(adminToken)).body.data;
+    const { userId } = await signUp('reader@example.com');
+    const before = (await User.findById(userId)).credits;
+
+    const { assignPlan } = await import('../plans.service.js');
+    const result = await assignPlan({ userId, planId: plan._id, actor: null, grantCredits: false });
+
+    expect(result.creditsGranted).toBe(0);
+    expect((await User.findById(userId)).credits).toBe(before);
+    expect(await Subscription.countDocuments({ userId, status: 'active' })).toBe(1);
+    expect(await CreditLedger.countDocuments({ userId, type: 'plan_grant' })).toBe(0);
+  });
+
   it('refuses a withdrawn plan', async () => {
     const { token: adminToken } = await signUp('admin@example.com', { admin: true });
     const plan = (await createPlan(adminToken, { isActive: false })).body.data;

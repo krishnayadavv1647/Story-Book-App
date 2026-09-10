@@ -178,8 +178,13 @@ export async function currentSubscription(userId) {
  *
  * Re-assigning the same plan is allowed and grants again: that is how a monthly
  * plan is renewed while there is no billing provider to do it.
+ *
+ * `grantCredits: false` puts the account on the plan and hands over nothing —
+ * for an account that already received the same credits another way (a flat
+ * signup grant, before the signup plan was switched on), where granting again
+ * would double what everyone else got.
  */
-export async function assignPlan({ userId, planId, actor }) {
+export async function assignPlan({ userId, planId, actor, grantCredits = true }) {
   const [user, plan] = await Promise.all([
     User.findById(userId).select('_id name email').lean(),
     Plan.findById(planId),
@@ -208,7 +213,8 @@ export async function assignPlan({ userId, planId, actor }) {
   });
 
   let balance = await credits.getBalance(userId);
-  if (plan.creditsGranted > 0) {
+  const granting = grantCredits && plan.creditsGranted > 0;
+  if (granting) {
     const granted = await credits.grant({
       userId,
       amount: plan.creditsGranted,
@@ -231,7 +237,11 @@ export async function assignPlan({ userId, planId, actor }) {
     subjectId: user._id,
     onBehalfOfUserId: user._id,
     changes: [{ field: 'plan', before: null, after: plan.key }],
-    reason: plan.creditsGranted > 0 ? `Granted ${plan.creditsGranted} credits` : null,
+    reason: granting
+      ? `Granted ${plan.creditsGranted} credits`
+      : plan.creditsGranted > 0
+        ? 'Assigned without its credits'
+        : null,
   });
 
   return {
@@ -242,7 +252,7 @@ export async function assignPlan({ userId, planId, actor }) {
       currentPeriodEnd: subscription.currentPeriodEnd,
       plan: publicPlan(plan),
     },
-    creditsGranted: plan.creditsGranted,
+    creditsGranted: granting ? plan.creditsGranted : 0,
     balance,
   };
 }
