@@ -4,7 +4,7 @@ import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
 import { createApp, API_PREFIX } from '../../../app.js';
-import { AuditLog, RefreshToken, User } from '../../../models/index.js';
+import { AuditLog, Book, RefreshToken, User } from '../../../models/index.js';
 
 let mongod;
 let app;
@@ -75,6 +75,32 @@ describe('GET /admin/overview', () => {
     const body = JSON.stringify(res.body);
     expect(body).not.toMatch(/test-gemini-key|test-kie-key/);
     expect(body).not.toMatch(/apiKey|API_KEY/);
+  });
+});
+
+describe('the book counts', () => {
+  it('counts only finished books as generated', async () => {
+    // A plan nobody illustrated and a run that failed are book records, not
+    // books anybody received — the headline must not count them.
+    const { token, userId } = await signUp('admin@example.com', { admin: true });
+    const ownerId = new mongoose.Types.ObjectId(userId);
+
+    // Raw inserts: the counts read nothing but `status`, and the full Book schema
+    // would only add noise to a test about arithmetic.
+    await Book.collection.insertMany(
+      ['ready', 'ready', 'published', 'plan_ready', 'generating', 'draft', 'failed'].map(
+        (status) => ({ ownerId, title: `A ${status} book`, status, createdAt: new Date() }),
+      ),
+    );
+
+    const res = await asUser(request(app).get(`${API_PREFIX}/admin/overview`), token);
+
+    expect(res.body.data).toMatchObject({
+      books: 7,
+      booksGenerated: 3,
+      booksInProgress: 3,
+      booksFailed: 1,
+    });
   });
 });
 

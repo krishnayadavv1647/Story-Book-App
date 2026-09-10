@@ -23,9 +23,9 @@ import { recordAudit } from './audit.service.js';
 export async function overview() {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [users, books, jobs, recentFailures, exports, storageRows] = await Promise.all([
+  const [users, bookRows, jobs, recentFailures, exports, storageRows] = await Promise.all([
     User.countDocuments({}),
-    Book.countDocuments({}),
+    Book.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
     GenerationJob.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
     GenerationJob.countDocuments({ status: 'failed', updatedAt: { $gte: since } }),
     ExportJob.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
@@ -35,10 +35,22 @@ export async function overview() {
   ]);
 
   const byStatus = (rows) => Object.fromEntries(rows.map((row) => [row._id, row.count]));
+  const booksByStatus = byStatus(bookRows);
+  const count = (...statuses) => statuses.reduce((sum, s) => sum + (booksByStatus[s] ?? 0), 0);
 
   return {
     users,
-    books,
+    // Every book record, drafts and failures included — what was started.
+    books: count(...Object.keys(booksByStatus)),
+    /**
+     * What was actually finished: illustrated and ready to read, or published.
+     * The number an operator means by "how many books have we made" — a plan
+     * nobody generated, or a run that failed, is not a book anyone received.
+     */
+    booksGenerated: count('ready', 'published'),
+    booksInProgress: count('draft', 'planning', 'plan_ready', 'characters_ready', 'generating'),
+    booksFailed: count('failed'),
+    booksByStatus,
     jobs: byStatus(jobs),
     exports: byStatus(exports),
     failuresLast24h: recentFailures,

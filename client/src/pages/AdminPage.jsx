@@ -30,15 +30,32 @@ import { useAuthStore } from '../store/authStore.js';
  * Counts only in the overview. An operator needs to know whether generation is
  * failing, not what anybody wrote.
  */
-function Stat({ label, value, tone }) {
+function Stat({ label, value, tone, hint }) {
   return (
     <Card className="p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
       <p className={tone ?? 'text-ink'}>
         <span className="text-section font-bold">{value}</span>
       </p>
+      {hint && <p className="mt-1 text-xs text-ink-muted">{hint}</p>}
     </Card>
   );
+}
+
+/**
+ * "13 created · 1 in progress · 1 failed", leaving out whatever is zero.
+ *
+ * The headline is the books actually finished; this line is what the rest of
+ * the book records are, so the two numbers never look like they disagree.
+ */
+function bookBreakdown({ books = 0, booksInProgress = 0, booksFailed = 0 }) {
+  return [
+    `${books} created`,
+    booksInProgress ? `${booksInProgress} in progress` : null,
+    booksFailed ? `${booksFailed} failed` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function Overview({ admin }) {
@@ -49,7 +66,11 @@ function Overview({ admin }) {
     <div className="pb-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Accounts" value={overview?.users ?? '—'} />
-        <Stat label="Books" value={overview?.books ?? '—'} />
+        <Stat
+          label="Books generated"
+          value={overview?.booksGenerated ?? '—'}
+          hint={overview ? bookBreakdown(overview) : null}
+        />
         <Stat
           label="Failures (24h)"
           value={overview?.failuresLast24h ?? '—'}

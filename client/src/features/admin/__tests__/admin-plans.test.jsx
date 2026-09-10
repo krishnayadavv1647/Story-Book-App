@@ -49,7 +49,10 @@ const DRAFT = { ...STARTER, _id: 'p2', key: 'draft', name: 'Draft', visibleToUse
 
 const OVERVIEW = {
   users: 2,
-  books: 0,
+  books: 13,
+  booksGenerated: 11,
+  booksInProgress: 1,
+  booksFailed: 1,
   jobs: {},
   exports: {},
   failuresLast24h: 0,
@@ -105,6 +108,18 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe('the overview', () => {
+  it('leads with the books actually generated, and says what the rest are', async () => {
+    vi.stubGlobal('fetch', api());
+    renderAdmin();
+
+    expect(await screen.findByText('Books generated')).toBeInTheDocument();
+    // The label renders before the numbers arrive, so wait for the value itself.
+    expect(await screen.findByText('11')).toBeInTheDocument();
+    expect(screen.getByText('13 created · 1 in progress · 1 failed')).toBeInTheDocument();
+  });
 });
 
 describe('the plans tab', () => {
