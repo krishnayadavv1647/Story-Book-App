@@ -54,6 +54,7 @@ function api() {
       });
     }
     if (path.includes('/admin/plans')) return envelope([]);
+    if (path.includes('/admin/bonus-links')) return envelope([]);
     if (path.includes('/admin/audit')) return envelope([]);
     if (path.includes('/credits')) {
       return envelope({ balance: 500, signupGrant: 500, prices: {}, recent: [] });

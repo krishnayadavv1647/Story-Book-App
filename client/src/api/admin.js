@@ -28,7 +28,16 @@ export const deletePlan = (planId) => api.delete(`/admin/plans/${planId}`);
 export const assignPlan = (userId, planId) => api.post(`/admin/users/${userId}/plan`, { planId });
 export const cancelPlan = (userId) => api.delete(`/admin/users/${userId}/plan`);
 
+/* ------------------------------------------------------------ bonus links -- */
+
+export const listBonusLinks = () => api.get('/admin/bonus-links');
+export const createBonusLink = (body) => api.post('/admin/bonus-links', body);
+export const updateBonusLink = (linkId, patch) => api.patch(`/admin/bonus-links/${linkId}`, patch);
+
 export default {
+  listBonusLinks,
+  createBonusLink,
+  updateBonusLink,
   fetchOverview,
   listUsers,
   fetchUserDetail,

@@ -8,6 +8,7 @@ import { isMailConfigured, sendMail } from '../../providers/email/mailer.js';
 import { loginCodeEmail, passwordResetEmail } from '../../providers/email/templates.js';
 import { recordSignupGrant } from '../credits/credits.service.js';
 import { assignPlanByKey } from '../plans/plans.service.js';
+import { resolveLink, settleSignupBonus } from '../bonus-links/bonusLinks.service.js';
 import { ApiError } from '../../utils/ApiError.js';
 import {
   durationToMs,
@@ -83,7 +84,12 @@ export async function toSessionPayload(user) {
  * here, so a new arrival cannot end up with a plan on one path and nothing on
  * another.
  */
-async function openNewAccount(user) {
+async function openNewAccount(user, { bonusLink = null } = {}) {
+  // A bonus account opens with nothing: its credits are the link's plan, and
+  // they arrive when the address is proved (`settleSignupBonus`). Granting the
+  // ordinary opening balance too would stack the two.
+  if (bonusLink) return;
+
   await recordSignupGrant(user);
 
   const granted = await assignPlanByKey({ userId: user._id, key: env.SIGNUP_PLAN_KEY });
@@ -142,7 +148,7 @@ async function issueLoginCode(user) {
   return { delivered };
 }
 
-export async function register({ name, email, password }) {
+export async function register({ name, email, password, bonusCode }) {
   const existing = await User.findOne({ email });
   if (existing) {
     // The address is already visible to whoever owns it, and refusing to say so
@@ -150,8 +156,14 @@ export async function register({ name, email, password }) {
     throw ApiError.conflict('An account already exists for that email address');
   }
 
-  const user = await User.create({ name, email, password });
-  await openNewAccount(user);
+  const bonusLink = await resolveLink(bonusCode);
+  const user = await User.create({
+    name,
+    email,
+    password,
+    ...(bonusLink ? { credits: 0, pendingBonusLinkId: bonusLink._id } : {}),
+  });
+  await openNewAccount(user, { bonusLink });
 
   // No session yet. An address nobody has proved they can read is not an
   // account anybody should be signed in to — the emailed code is that proof,
@@ -210,7 +222,7 @@ export async function login({ email, password }, req) {
  * (they sign in through Google) and an email already marked verified, because
  * Google verified it for us.
  */
-export async function signInWithGoogleProfile(profile, req) {
+export async function signInWithGoogleProfile(profile, req, { bonusCode = null } = {}) {
   // An unverified Google email must never be trusted to match an existing
   // account — that would let someone claim another person's address.
   if (!profile.email || !profile.emailVerified) {
@@ -228,12 +240,14 @@ export async function signInWithGoogleProfile(profile, req) {
       if (!byEmail.emailVerifiedAt) byEmail.emailVerifiedAt = new Date();
       user = byEmail;
     } else {
+      const bonusLink = await resolveLink(bonusCode);
       user = new User({
         email: profile.email,
         name: profile.name,
         googleId: profile.sub,
         avatarUrl: profile.picture,
         emailVerifiedAt: new Date(),
+        ...(bonusLink ? { credits: 0, pendingBonusLinkId: bonusLink._id } : {}),
       });
     }
   }
@@ -250,7 +264,12 @@ export async function signInWithGoogleProfile(profile, req) {
 
   // Google has already proved the address, which is why this route hands back a
   // session straight away.
-  if (isNewAccount) await openNewAccount(user);
+  if (isNewAccount) {
+    await openNewAccount(user, { bonusLink: user.pendingBonusLinkId ? {} : null });
+    // Nothing to wait for: Google has proved the address, so a bonus link's
+    // plan is handed over now rather than on a verification that never comes.
+    await settleSignupBonus(user);
+  }
 
   const tokens = await issueSession(user, req);
   return { ...tokens, session: await toSessionPayload(user) };
@@ -395,15 +414,20 @@ export async function requestPasswordReset({ email }) {
  * mailer being used to flood somebody, and the code is stored hashed and burned
  * after a handful of wrong guesses.
  */
-export async function requestLoginCode({ email, name }) {
+export async function requestLoginCode({ email, name, bonusCode }) {
   let user = await User.findOne({ email }).select('+loginCode.requestedAt');
   const isNewAccount = !user;
 
   if (!user) {
-    user = await User.create({ email, name: name?.trim() || nameFromEmail(email) });
-    // Only ever on a brand-new account, so asking for a second code cannot
-    // collect the signup plan twice.
-    await openNewAccount(user);
+    // Only ever on a brand-new account, so asking for a second code — with or
+    // without a bonus link — cannot collect anything twice.
+    const bonusLink = await resolveLink(bonusCode);
+    user = await User.create({
+      email,
+      name: name?.trim() || nameFromEmail(email),
+      ...(bonusLink ? { credits: 0, pendingBonusLinkId: bonusLink._id } : {}),
+    });
+    await openNewAccount(user, { bonusLink });
   }
 
   // A suspended account gets no code, and no explanation either.
@@ -464,6 +488,11 @@ export async function verifyLoginCode({ email, code }, req) {
   user.emailVerifiedAt = user.emailVerifiedAt ?? new Date();
   user.lastLoginAt = new Date();
   await user.save();
+
+  // An account that signed up through a bonus link receives its plan here, and
+  // only here — before the session payload is built, so the balance it shows
+  // is the one the reader actually has.
+  await settleSignupBonus(user);
 
   const tokens = await issueSession(user, req);
   return { ...tokens, session: await toSessionPayload(user) };

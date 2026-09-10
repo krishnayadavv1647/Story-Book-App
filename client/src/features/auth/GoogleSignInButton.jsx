@@ -13,10 +13,14 @@ import { useConfigStore } from '../../store/configStore.js';
  */
 const GOOGLE_START = `${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/auth/google`;
 
-export function GoogleSignInButton({ text = 'Continue with Google', label = 'or' }) {
+export function GoogleSignInButton({ text = 'Continue with Google', label = 'or', bonusCode = null }) {
   const enabled = useConfigStore((s) => s.googleAuthEnabled);
 
   if (!enabled) return null;
+
+  // A bonus link has to survive the trip out to Google and back; the server
+  // parks it in a cookie for the callback to read.
+  const href = bonusCode ? `${GOOGLE_START}?bonus=${encodeURIComponent(bonusCode)}` : GOOGLE_START;
 
   return (
     <div>
@@ -29,7 +33,7 @@ export function GoogleSignInButton({ text = 'Continue with Google', label = 'or'
       {/* A plain anchor, not a router link: this must be a real navigation so the
           browser follows the server's redirect out to Google. */}
       <a
-        href={GOOGLE_START}
+        href={href}
         className="flex w-full items-center justify-center gap-3 rounded-pill border border-hairline bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-surface-hover"
       >
         <svg viewBox="0 0 48 48" className="h-[18px] w-[18px]" aria-hidden="true">

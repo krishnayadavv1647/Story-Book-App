@@ -60,6 +60,11 @@ export async function verifyLoginCode(body) {
   return adopt(await api.post('/auth/otp/verify', body));
 }
 
+/** What a bonus link offers — `{ valid, planName, credits }` — for the sign-up page. */
+export async function lookupBonusLink(code) {
+  return api.get(`/auth/bonus/${encodeURIComponent(code)}`);
+}
+
 export async function forgotPassword(body) {
   return api.post('/auth/forgot-password', body);
 }
@@ -78,4 +83,5 @@ export default {
   resetPassword,
   requestLoginCode,
   verifyLoginCode,
+  lookupBonusLink,
 };

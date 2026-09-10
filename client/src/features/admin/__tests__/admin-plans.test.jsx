@@ -75,6 +75,7 @@ function api({ users = [READER], plans = [STARTER, DRAFT] } = {}) {
     }
     if (path.includes('/admin/plans')) return envelope(plans);
     if (path.includes('/admin/overview')) return envelope(OVERVIEW);
+    if (path.includes('/admin/bonus-links')) return envelope([]);
     if (path.includes('/admin/audit')) return envelope([]);
     if (path.includes('/auth/session')) return envelope({ user: ADMIN });
     return envelope({ ok: true });

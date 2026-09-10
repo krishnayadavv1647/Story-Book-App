@@ -41,6 +41,9 @@ export function AppRoutes() {
       <Route element={<RedirectIfAuthenticated />}>
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/sign-up" element={<SignUpPage />} />
+        {/* A bonus link: the same sign-up page, carrying the code that decides
+            which plan the new account lands on once it is verified. */}
+        <Route path="/join/:code" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       </Route>
 

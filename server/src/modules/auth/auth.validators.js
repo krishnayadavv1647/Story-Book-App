@@ -18,10 +18,18 @@ const password = z
   .min(12, 'Use at least 12 characters')
   .max(72, 'Use at most 72 characters');
 
+/**
+ * The code from a bonus link, when the reader arrived through one. Optional and
+ * never trusted on its own: the server looks it up, and an unknown or switched-off
+ * code just makes this an ordinary sign-up.
+ */
+const bonusCode = z.string().trim().max(64).optional();
+
 export const registerSchema = z.object({
   name: z.string().trim().min(2, 'Enter your name').max(120),
   email,
   password,
+  bonusCode,
 });
 
 export const loginSchema = z.object({
@@ -44,7 +52,10 @@ export const resetPasswordSchema = z.object({
 export const requestLoginCodeSchema = z.object({
   email,
   name: z.string().trim().min(1).max(120).optional(),
+  bonusCode,
 });
+
+export const bonusCodeParamSchema = z.object({ code: z.string().trim().min(1).max(64) });
 
 export const verifyLoginCodeSchema = z.object({
   email,
@@ -63,4 +74,5 @@ export default {
   resetPasswordSchema,
   requestLoginCodeSchema,
   verifyLoginCodeSchema,
+  bonusCodeParamSchema,
 };

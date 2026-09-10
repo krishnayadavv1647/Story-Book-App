@@ -129,9 +129,13 @@ const schema = z.object({
    *
    * A worked example at the defaults: a 12-page book costs 10 for the plan,
    * 5 × 14 for its pages and two covers, and 5 per character designed — about
-   * 90 credits, so an opening balance covers roughly five books.
+   * 90 credits. An ordinary opening balance of 80 is a taste; a bonus plan is
+   * what covers several books.
    */
-  CREDITS_SIGNUP_GRANT: int(500),
+  // What an ordinary sign-up opens with. A bonus link replaces this with its
+  // plan's credits rather than adding to it, so a bonus account holds exactly
+  // what the plan says.
+  CREDITS_SIGNUP_GRANT: int(80),
   /**
    * The plan every brand-new account is put on, whichever way it signed up.
    *

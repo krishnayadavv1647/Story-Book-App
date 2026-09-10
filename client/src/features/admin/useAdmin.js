@@ -7,6 +7,7 @@ export const adminKeys = {
   users: (search, page) => ['admin', 'users', search, page],
   user: (userId) => ['admin', 'user', userId],
   plans: () => ['admin', 'plans'],
+  bonusLinks: () => ['admin', 'bonus-links'],
   audit: () => ['admin', 'audit'],
 };
 
@@ -25,6 +26,10 @@ export function useAdmin() {
     placeholderData: (previous) => previous,
   });
   const plans = useQuery({ queryKey: adminKeys.plans(), queryFn: adminApi.listPlans });
+  const bonusLinks = useQuery({
+    queryKey: adminKeys.bonusLinks(),
+    queryFn: adminApi.listBonusLinks,
+  });
   const audit = useQuery({ queryKey: adminKeys.audit(), queryFn: adminApi.fetchAudit });
 
   /**
@@ -65,12 +70,24 @@ export function useAdmin() {
     onSuccess: refreshAll,
   });
 
+  const createBonusLink = useMutation({
+    mutationFn: adminApi.createBonusLink,
+    onSuccess: refreshAll,
+  });
+  const updateBonusLink = useMutation({
+    mutationFn: ({ linkId, patch }) => adminApi.updateBonusLink(linkId, patch),
+    onSuccess: refreshAll,
+  });
+
   const pagination = users.data?.pagination ?? null;
 
   return {
     overview: overview.data ?? null,
     users: users.data?.items ?? [],
     plans: plans.data ?? [],
+    // Guarded, not just defaulted: anything that is not a list must not reach a
+    // `.map` and take the whole Plans tab down with it.
+    bonusLinks: Array.isArray(bonusLinks.data) ? bonusLinks.data : [],
     audit: audit.data ?? [],
     search,
     setSearch: (value) => {
@@ -98,6 +115,8 @@ export function useAdmin() {
     createPlan,
     updatePlan,
     deletePlan,
+    createBonusLink,
+    updateBonusLink,
   };
 }
 

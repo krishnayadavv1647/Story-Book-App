@@ -5,6 +5,12 @@ import * as controller from './admin.controller.js';
 import { listUsersQuerySchema, updateUserSchema, userParamSchema } from './admin.validators.js';
 import { adjustCreditsSchema } from '../credits/credits.validators.js';
 import * as plans from '../plans/plans.controller.js';
+import * as bonusLinks from '../bonus-links/bonusLinks.controller.js';
+import {
+  createBonusLinkSchema,
+  linkParamSchema,
+  updateBonusLinkSchema,
+} from '../bonus-links/bonusLinks.validators.js';
 import {
   assignPlanSchema,
   createPlanSchema,
@@ -49,6 +55,15 @@ router.patch(
   plans.update,
 );
 router.delete('/plans/:planId', validate({ params: planParamSchema }), plans.remove);
+
+// Bonus sign-up links: hand one out, see how often it was redeemed, switch it off.
+router.get('/bonus-links', bonusLinks.list);
+router.post('/bonus-links', validate({ body: createBonusLinkSchema }), bonusLinks.create);
+router.patch(
+  '/bonus-links/:linkId',
+  validate({ params: linkParamSchema, body: updateBonusLinkSchema }),
+  bonusLinks.update,
+);
 
 router.get('/audit', controller.audit);
 

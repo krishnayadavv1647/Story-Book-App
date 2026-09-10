@@ -15,6 +15,7 @@ import {
 import { useAdmin } from '../features/admin/useAdmin.js';
 import { AdminAccounts } from '../features/admin/AdminAccounts.jsx';
 import { AdminPlans } from '../features/admin/AdminPlans.jsx';
+import { AdminBonusLinks } from '../features/admin/AdminBonusLinks.jsx';
 import { useAuthStore } from '../store/authStore.js';
 
 /**
@@ -191,6 +192,7 @@ export function AdminPage() {
           </TabPanel>
           <TabPanel value="plans">
             <AdminPlans admin={admin} />
+            <AdminBonusLinks admin={admin} />
           </TabPanel>
           <TabPanel value="audit">
             <AuditTrail admin={admin} />

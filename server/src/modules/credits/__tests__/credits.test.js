@@ -194,6 +194,9 @@ describe('admin adjustments', () => {
   });
 
   it('corrects a balance downwards but never below zero', async () => {
+    // Derived from the opening balance rather than written in, so the test
+    // keeps meaning "a correction that fits" whatever an account opens with.
+    const correction = Math.floor(env.CREDITS_SIGNUP_GRANT / 2);
     const { token: adminToken } = await signUpAdmin();
     const { userId } = await signUp('reader@example.com');
 
@@ -208,10 +211,10 @@ describe('admin adjustments', () => {
     const ok = await asUser(
       request(app).post(url(`/admin/users/${userId}/credits`)),
       adminToken,
-    ).send({ amount: -100 });
+    ).send({ amount: -correction });
 
     expect(ok.status).toBe(200);
-    expect((await User.findById(userId)).credits).toBe(env.CREDITS_SIGNUP_GRANT - 100);
+    expect((await User.findById(userId)).credits).toBe(env.CREDITS_SIGNUP_GRANT - correction);
   });
 
   it('is closed to everyone else', async () => {

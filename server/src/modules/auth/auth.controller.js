@@ -11,6 +11,7 @@ import {
   isGoogleAuthConfigured,
 } from '../../providers/google/googleAuth.js';
 import * as authService from './auth.service.js';
+import { describeLink } from '../bonus-links/bonusLinks.service.js';
 
 /**
  * The access token is returned in the body for the client to hold in memory;
@@ -32,6 +33,9 @@ function clearRefreshCookie(res) {
  * planted callback fail. Same path/SameSite as the refresh cookie.
  */
 const GSTATE_COOKIE = 'sb_gstate';
+// A bonus link's code, carried through the round trip to Google the same way the
+// state is — a short-lived httpOnly cookie, read once on the way back.
+const GBONUS_COOKIE = 'sb_gbonus';
 
 function stateCookieOptions() {
   return {
@@ -86,6 +90,10 @@ export const googleStart = asyncHandler(async (req, res) => {
 
   const state = crypto.randomBytes(16).toString('base64url');
   res.cookie(GSTATE_COOKIE, state, stateCookieOptions());
+
+  const bonus = typeof req.query.bonus === 'string' ? req.query.bonus.slice(0, 64) : '';
+  if (bonus) res.cookie(GBONUS_COOKIE, bonus, stateCookieOptions());
+
   return res.redirect(buildAuthUrl({ state }));
 });
 
@@ -99,6 +107,8 @@ export const googleStart = asyncHandler(async (req, res) => {
 export const googleCallback = asyncHandler(async (req, res) => {
   const { maxAge, ...clearOptions } = stateCookieOptions();
   res.clearCookie(GSTATE_COOKIE, clearOptions);
+  const bonusCode = req.cookies?.[GBONUS_COOKIE] ?? null;
+  res.clearCookie(GBONUS_COOKIE, clearOptions);
 
   const { code, state, error } = req.query;
   const cookieState = req.cookies?.[GSTATE_COOKIE];
@@ -114,7 +124,9 @@ export const googleCallback = asyncHandler(async (req, res) => {
 
   try {
     const profile = await exchangeCodeForProfile(String(code));
-    const { refreshToken } = await authService.signInWithGoogleProfile(profile, req);
+    const { refreshToken } = await authService.signInWithGoogleProfile(profile, req, {
+      bonusCode,
+    });
     setRefreshCookie(res, refreshToken);
     return res.redirect(clientRedirect('/'));
   } catch (err) {
@@ -179,6 +191,18 @@ export const verifyLoginCode = asyncHandler(async (req, res) => {
   return sendSuccess(res, { data: { accessToken, ...session }, message: 'Signed in' });
 });
 
+/**
+ * What a bonus link offers, so the sign-up page can say so before anyone types.
+ * Public — the reader is not signed in yet — and it tells them the plan's name
+ * and credits, nothing about the campaign behind it.
+ */
+export const bonusLookup = asyncHandler(async (req, res) =>
+  sendSuccess(res, {
+    data: await describeLink(req.validated.params.code),
+    message: 'Bonus link',
+  }),
+);
+
 export const resetPassword = asyncHandler(async (req, res) => {
   await authService.resetPassword(req.validated.body);
   clearRefreshCookie(res);
@@ -201,4 +225,5 @@ export default {
   resetPassword,
   requestLoginCode,
   verifyLoginCode,
+  bonusLookup,
 };

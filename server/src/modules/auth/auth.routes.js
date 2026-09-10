@@ -4,6 +4,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { authLimiter } from '../../middleware/rateLimit.js';
 import * as controller from './auth.controller.js';
 import {
+  bonusCodeParamSchema,
   forgotPasswordSchema,
   requestLoginCodeSchema,
   verifyLoginCodeSchema,
@@ -42,6 +43,15 @@ router.post(
   authLimiter,
   validate({ body: verifyLoginCodeSchema }),
   controller.verifyLoginCode,
+);
+
+// What a bonus link offers, for the sign-up page it lands on. Public by nature —
+// it is read before anybody has an account — and rate limited like the rest.
+router.get(
+  '/bonus/:code',
+  authLimiter,
+  validate({ params: bonusCodeParamSchema }),
+  controller.bonusLookup,
 );
 
 router.post('/refresh', controller.refresh);

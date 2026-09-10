@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Gift } from 'lucide-react';
 
 import { AuthLayout } from '../components/layout/AuthLayout.jsx';
 import { Button, Callout, Field, Input } from '../components/common/index.js';
@@ -7,6 +9,7 @@ import { useAuthStore } from '../store/authStore.js';
 import { useAuthSubmit } from '../features/auth/useAuthSubmit.js';
 import { GoogleSignInButton } from '../features/auth/GoogleSignInButton.jsx';
 import { VerifyCodeStep } from '../features/auth/VerifyCodeStep.jsx';
+import { lookupBonusLink } from '../api/auth.js';
 
 /**
  * Signing up is two steps now: the form creates the account, and the emailed
@@ -17,6 +20,18 @@ export function SignUpPage() {
   const signUp = useAuthStore((s) => s.signUp);
   const navigate = useNavigate();
   const [pendingEmail, setPendingEmail] = useState(null);
+
+  // Arriving through a bonus link (`/join/:code`). The page asks the server what
+  // the link offers before anyone types, so a dead link is said to be dead
+  // rather than discovered after signing up.
+  const { code: bonusCode } = useParams();
+  const bonus = useQuery({
+    queryKey: ['bonus-link', bonusCode],
+    queryFn: () => lookupBonusLink(bonusCode),
+    enabled: Boolean(bonusCode),
+    retry: false,
+  });
+  const offer = bonus.data?.valid ? bonus.data : null;
 
   const handler = useCallback(
     async (values) => {
@@ -36,6 +51,9 @@ export function SignUpPage() {
       name: data.get('name'),
       email: data.get('email'),
       password: data.get('password'),
+      // Sent even if the lookup said the link is dead: the server decides, and
+      // an unusable code simply makes this an ordinary sign-up.
+      ...(bonusCode ? { bonusCode } : {}),
     });
   };
 
@@ -52,6 +70,23 @@ export function SignUpPage() {
         </>
       }
     >
+      {!pendingEmail && offer && (
+        <Callout tone="success" className="mb-4">
+          <span className="flex items-start gap-2">
+            <Gift className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>
+              You are claiming the <span className="font-semibold">{offer.planName}</span> —{' '}
+              {offer.credits} credits, added as soon as you confirm your email.
+            </span>
+          </span>
+        </Callout>
+      )}
+      {!pendingEmail && bonusCode && bonus.data && !offer && (
+        <Callout className="mb-4">
+          This bonus link is no longer active. You can still create an account.
+        </Callout>
+      )}
+
       {pendingEmail ? (
         <VerifyCodeStep
           email={pendingEmail}
@@ -101,7 +136,7 @@ export function SignUpPage() {
         </form>
       )}
 
-      <GoogleSignInButton text="Sign up with Google" />
+      <GoogleSignInButton bonusCode={offer ? bonusCode : null} text="Sign up with Google" />
     </AuthLayout>
   );
 }

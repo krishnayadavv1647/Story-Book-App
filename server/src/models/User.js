@@ -66,6 +66,18 @@ const userSchema = new mongoose.Schema(
     },
 
     /**
+     * The bonus link this account signed up through, until the address is
+     * proved. The plan is only handed over on verification — an unverified
+     * sign-up cannot use credits anyway, and granting early would let anybody
+     * farm a bonus with addresses they never confirm. Cleared once settled.
+     */
+    pendingBonusLinkId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'BonusLink',
+      default: null,
+    },
+
+    /**
      * What is left to spend on generation.
      *
      * The running total, and the only figure read on the hot path — every
