@@ -100,6 +100,15 @@ const schema = z.object({
   CLIENT_ORIGIN: csv('http://localhost:5173'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
+  /**
+   * The video shown in the welcome pop-up the first time someone signs in — any
+   * YouTube link (youtu.be, watch?v=, /embed/, /shorts/). Served to the browser
+   * through the public /config, so changing the video is a setting on the
+   * server, not a rebuild of the client. A blank line keeps this default; set it
+   * to `off` to switch the pop-up off altogether.
+   */
+  WELCOME_VIDEO_URL: str('https://youtu.be/OCIQ9DEDE8c'),
+
   MONGODB_URI: z.string().min(1).default('mongodb://127.0.0.1:27017/storybook_studio'),
   MONGODB_DB_NAME: str('storybook_studio'),
 

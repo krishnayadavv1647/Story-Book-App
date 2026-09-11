@@ -29,6 +29,14 @@ describe('GET /config', () => {
     expect(serialised).not.toContain('mongodb');
     expect(serialised).not.toContain('api_key');
     expect(serialised).not.toContain('client_id');
-    expect(Object.keys(res.body.data)).toEqual(['googleAuthEnabled']);
+    expect(Object.keys(res.body.data)).toEqual(['googleAuthEnabled', 'welcomeVideoUrl']);
+  });
+});
+
+describe('the welcome video', () => {
+  it('is a public YouTube link the pop-up can play', async () => {
+    const res = await request(app).get(`${API_PREFIX}/config`);
+
+    expect(res.body.data.welcomeVideoUrl).toMatch(/^https:\/\/(youtu\.be|(www\.)?youtube\.com)\//);
   });
 });

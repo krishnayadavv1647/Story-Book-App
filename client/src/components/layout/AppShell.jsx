@@ -2,6 +2,7 @@ import { Menu } from 'lucide-react';
 
 import { cn } from '../../lib/cn.js';
 import { useUiStore } from '../../store/uiStore.js';
+import { WelcomeVideo } from '../../features/onboarding/WelcomeVideo.jsx';
 import { IconButton } from '../common/IconButton.jsx';
 import { Sidebar } from './Sidebar.jsx';
 
@@ -56,6 +57,11 @@ export function AppShell({ children, className, contentClassName }) {
           {children}
         </main>
       </div>
+
+      {/* Here rather than at the app root: it welcomes people into the app, so
+          it opens over the app — not over the sign-in screens or the full-screen
+          reader, which have none of this chrome. */}
+      <WelcomeVideo />
     </div>
   );
 }

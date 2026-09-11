@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { sendSuccess } from '../utils/apiResponse.js';
+import { env } from '../config/env.js';
 import { isGoogleAuthConfigured } from '../providers/google/googleAuth.js';
 
 const router = Router();
@@ -20,6 +21,10 @@ router.get('/config', (_req, res) =>
   sendSuccess(res, {
     data: {
       googleAuthEnabled: isGoogleAuthConfigured(),
+      // A public YouTube link, or null when the welcome pop-up is switched off.
+      welcomeVideoUrl: /^(off|none|false)$/i.test(env.WELCOME_VIDEO_URL)
+        ? null
+        : env.WELCOME_VIDEO_URL,
     },
     message: 'Public configuration',
   }),

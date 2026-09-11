@@ -16,6 +16,8 @@ let inflight = null;
 
 export const useConfigStore = create((set, get) => ({
   googleAuthEnabled: false,
+  // The welcome pop-up's YouTube link, or null when it is switched off.
+  welcomeVideoUrl: null,
   // 'unknown' until the first fetch resolves, then 'loaded' or 'error'.
   status: 'unknown',
 
@@ -26,7 +28,11 @@ export const useConfigStore = create((set, get) => ({
     inflight = configApi
       .fetchConfig()
       .then((config) => {
-        set({ googleAuthEnabled: Boolean(config?.googleAuthEnabled), status: 'loaded' });
+        set({
+          googleAuthEnabled: Boolean(config?.googleAuthEnabled),
+          welcomeVideoUrl: config?.welcomeVideoUrl || null,
+          status: 'loaded',
+        });
       })
       .catch(() => {
         // A missing config just means no optional integrations light up; it must

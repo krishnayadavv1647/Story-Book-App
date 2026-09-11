@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Coins, KeyRound, Save } from 'lucide-react';
+import { Coins, KeyRound, PlayCircle, Save } from 'lucide-react';
 
 import { AppShell, PageHeader } from '../components/layout/index.js';
 import {
@@ -14,6 +14,8 @@ import {
 } from '../components/common/index.js';
 import { useProfile } from '../features/account/useAccount.js';
 import { useCredits } from '../features/credits/useCredits.js';
+import { useConfigStore } from '../store/configStore.js';
+import { useWelcomeStore } from '../store/welcomeStore.js';
 
 /**
  * SYSTEM-DERIVED. No frame covers account settings.
@@ -28,6 +30,8 @@ export function SettingsPage() {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const credits = useCredits();
+  const welcomeVideoUrl = useConfigStore((state) => state.welcomeVideoUrl);
+  const showWelcome = useWelcomeStore((state) => state.show);
 
   useEffect(() => {
     if (account.profile?.name) setName(account.profile.name);
@@ -166,6 +170,20 @@ export function SettingsPage() {
             </Link>
           </div>
         </Card>
+
+        {welcomeVideoUrl && (
+          <Card className="p-5">
+            <h2 className="text-base font-semibold text-ink">Welcome video</h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              The short tour that opened the first time you signed in.
+            </p>
+            <div className="mt-4">
+              <Button leadingIcon={PlayCircle} onClick={showWelcome}>
+                Watch it again
+              </Button>
+            </div>
+          </Card>
+        )}
 
         <Card className="p-5">
           <h2 className="text-base font-semibold text-ink">Password</h2>
